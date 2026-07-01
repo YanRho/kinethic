@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 
 type Profile = {
   id: "bryan" | "darian";
@@ -56,11 +57,11 @@ function ProfileAvatar({ profile }: { profile: Profile }) {
 }
 
 export default function Home() {
-  const handleProfileSelect = (profileId: Profile["id"]) => {
-    console.log(`Selected profile: ${profileId}`);
+  const router = useRouter();
 
-    // Later this will route to something like:
-    // router.push(`/today/${profileId}`);
+  const handleProfileSelect = (profileId: Profile["id"]) => {
+
+    router.push(`/today/${profileId}`);
   };
 
   return (
