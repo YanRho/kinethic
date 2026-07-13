@@ -1,56 +1,40 @@
+"use client";
+
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { useRouter } from "next/navigation";
+import { use, useMemo, useSyncExternalStore } from "react";
 
-type ProfileId = "bryan" | "darian"; 
+type DayKey =
+  | "monday"
+  | "tuesday"
+  | "wednesday"
+  | "thursday"
+  | "friday"
+  | "saturday"
+  | "sunday";
 
+type ScheduleType = "rest" | "workout" | "optional";
+type CompletionStatus = "done" | "skipped" | "unset";
+
+type ScheduleDay = {
+  title: string;
+  detail: string;
+  type: ScheduleType;
+};
 
 type Profile = {
-  id: ProfileId;
+  id: string;
   name: string;
   initials: string;
-  focus: string;
   accent: string;
+  schedule: Record<DayKey, ScheduleDay>;
+  completions?: Partial<Record<DayKey, CompletionStatus>>;
 };
 
-const profiles: Record<ProfileId, Profile> = {
-  bryan: {
-    id: "bryan",
-    name: "Bryan",
-    initials: "B",
-    focus: "Strength, consistency, and leaning out.",
-    accent: "from-cyan-300 via-blue-400 to-indigo-500",
-  },
-  darian: {
-    id: "darian",
-    name: "Darian",
-    initials: "D",
-    focus: "Glute-focused training and steady progress.",
-    accent: "from-rose-300 via-fuchsia-400 to-violet-500",
-  },
-};
+const storageKey = "kinethic:profiles";
+const storageChangeEvent = "kinethic:profiles-changed";
 
-const weeklySchedule = {
-  bryan: {
-    monday: { title: "Rest Day", detail: "Recovery is part of the plan.", type: "rest" },
-    tuesday: { title: "Rest Day", detail: "Recovery is part of the plan.", type: "rest" },
-    wednesday: { title: "Upper A", detail: "Balanced upper-body strength.", type: "workout" },
-    thursday: { title: "Lower A", detail: "Balanced lower-body strength.", type: "workout" },
-    friday: { title: "Cardio + Core", detail: "Optional movement day.", type: "optional" },
-    saturday: { title: "Upper B", detail: "Shoulder and arm emphasis.", type: "workout" },
-    sunday: { title: "Lower B", detail: "Posterior-chain focused lower body.", type: "workout" },
-  },
-  darian: {
-    monday: { title: "Rest Day", detail: "Recovery is part of the plan.", type: "rest" },
-    tuesday: { title: "Rest Day", detail: "Recovery is part of the plan.", type: "rest" },
-    wednesday: { title: "Upper A", detail: "Upper-body strength and balance.", type: "workout" },
-    thursday: { title: "Lower A", detail: "Glutes and hamstrings focus.", type: "workout" },
-    friday: { title: "Cardio + Core", detail: "Optional movement day.", type: "optional" },
-    saturday: { title: "Upper B", detail: "Upper-body strength and balance.", type: "workout" },
-    sunday: { title: "Lower B", detail: "Glutes and quads focus.", type: "workout" },
-  },
-};
-
-const dayLabels = [
+const dayLabels: { key: DayKey; label: string }[] = [
   { key: "monday", label: "Mon" },
   { key: "tuesday", label: "Tue" },
   { key: "wednesday", label: "Wed" },
@@ -58,10 +42,71 @@ const dayLabels = [
   { key: "friday", label: "Fri" },
   { key: "saturday", label: "Sat" },
   { key: "sunday", label: "Sun" },
-] as const;
+];
 
-function isProfileId(value: string): value is ProfileId {
-  return value === "bryan" || value === "darian";
+function parseProfiles(snapshot: string) {
+  try {
+    const parsedProfiles = JSON.parse(snapshot);
+
+    return Array.isArray(parsedProfiles) ? (parsedProfiles as Profile[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function getProfilesSnapshot() {
+  if (typeof window === "undefined") {
+    return "[]";
+  }
+
+  return window.localStorage.getItem(storageKey) ?? "[]";
+}
+
+function subscribeToProfiles(onStoreChange: () => void) {
+  if (typeof window === "undefined") {
+    return () => {};
+  }
+
+  const handleStorage = (event: StorageEvent) => {
+    if (event.key === storageKey) {
+      onStoreChange();
+    }
+  };
+
+  window.addEventListener("storage", handleStorage);
+  window.addEventListener(storageChangeEvent, onStoreChange);
+
+  return () => {
+    window.removeEventListener("storage", handleStorage);
+    window.removeEventListener(storageChangeEvent, onStoreChange);
+  };
+}
+
+function useStoredProfiles() {
+  const snapshot = useSyncExternalStore(
+    subscribeToProfiles,
+    getProfilesSnapshot,
+    () => "[]",
+  );
+
+  return useMemo(() => parseProfiles(snapshot), [snapshot]);
+}
+
+function saveProfiles(profiles: Profile[]) {
+  window.localStorage.setItem(storageKey, JSON.stringify(profiles));
+  window.dispatchEvent(new Event(storageChangeEvent));
+}
+
+function getNextStatus(status: CompletionStatus) {
+  if (status === "unset") {
+    return "done";
+  }
+
+  if (status === "done") {
+    return "skipped";
+  }
+
+  return "unset";
 }
 
 function getTodayKey() {
@@ -72,38 +117,109 @@ function getTodayKey() {
     .format(new Date())
     .toLowerCase();
 
-  return weekday as keyof typeof weeklySchedule.bryan;
+  return weekday as DayKey;
 }
 
-export default async function TodayPage({
+export default function TodayPage({
   params,
 }: {
   params: Promise<{ profileId: string }>;
 }) {
-  const { profileId } = await params;
+  const { profileId } = use(params);
+  const router = useRouter();
+  const profiles = useStoredProfiles();
+  const todayKey = useMemo(() => getTodayKey(), []);
+  const profile =
+    profiles.find((storedProfile) => storedProfile.id === profileId) ?? null;
 
-  if (!isProfileId(profileId)) {
-    notFound();
+  const formattedDate = useMemo(
+    () =>
+      new Intl.DateTimeFormat("en-US", {
+        weekday: "long",
+        month: "long",
+        day: "numeric",
+        timeZone: "America/Los_Angeles",
+      }).format(new Date()),
+    [],
+  );
+
+  if (!profile) {
+    return (
+      <main className="grid min-h-dvh place-items-center bg-[#080b12] px-5 text-white">
+        <div className="max-w-sm rounded-4xl border border-white/10 bg-white/[0.035] p-7 text-center">
+          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-300">
+            Profile not found
+          </p>
+          <h1 className="mt-4 text-3xl font-semibold tracking-tight">
+            Create a local profile first.
+          </h1>
+          <p className="mt-3 text-sm leading-6 text-slate-400">
+            Profiles are saved in this browser, so this device does not have a
+            profile with that link.
+          </p>
+          <Link
+            href="/"
+            className="mt-6 inline-flex rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-cyan-100"
+          >
+            Back to profiles
+          </Link>
+        </div>
+      </main>
+    );
   }
 
-  const profile = profiles[profileId];
-  const todayKey = getTodayKey();
-  const today = weeklySchedule[profileId][todayKey];
-
-  const formattedDate = new Intl.DateTimeFormat("en-US", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-    timeZone: "America/Los_Angeles",
-  }).format(new Date());
-
+  const today = profile.schedule[todayKey];
   const isRestDay = today.type === "rest";
   const isOptionalDay = today.type === "optional";
+  const todayTitle =
+    today.title || (isRestDay ? "Rest Day" : "Untitled workout");
+  const todayDetail =
+    today.detail ||
+    (isRestDay
+      ? "No workout is scheduled today."
+      : "No notes added yet.");
+  const mainWorkoutCount = dayLabels.filter(
+    (day) => profile.schedule[day.key].type === "workout",
+  ).length;
+  const handleDeleteProfile = () => {
+    const shouldDelete = window.confirm(
+      `Are you sure you want to delete ${profile.name}'s profile?`,
+    );
+
+    if (!shouldDelete) {
+      return;
+    }
+
+    saveProfiles(
+      profiles.filter((storedProfile) => storedProfile.id !== profile.id),
+    );
+    router.push("/");
+  };
+  const handleToggleDayStatus = (day: DayKey) => {
+    const currentStatus = profile.completions?.[day] ?? "unset";
+    const nextStatus = getNextStatus(currentStatus);
+
+    saveProfiles(
+      profiles.map((storedProfile) => {
+        if (storedProfile.id !== profile.id) {
+          return storedProfile;
+        }
+
+        return {
+          ...storedProfile,
+          completions: {
+            ...storedProfile.completions,
+            [day]: nextStatus,
+          },
+        };
+      }),
+    );
+  };
 
   return (
     <main className="min-h-dvh bg-[#080b12] px-5 py-6 text-white">
       <div className="mx-auto flex min-h-[calc(100dvh-3rem)] max-w-md flex-col">
-        <header className="flex items-center justify-between">
+        <header className="flex flex-wrap items-center justify-between gap-3">
           <Link
             href="/"
             className="text-xl font-semibold tracking-tight transition hover:text-cyan-200"
@@ -111,12 +227,22 @@ export default async function TodayPage({
             Kin<span className="text-cyan-300">Ethic</span>
           </Link>
 
-          <Link
-            href="/"
-            className="rounded-full border border-white/10 bg-white/4 px-3 py-2 text-xs font-medium text-slate-300 transition hover:border-white/20 hover:bg-white/8 hover:text-white"
-          >
-            Switch profile
-          </Link>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleDeleteProfile}
+              className="rounded-full border border-red-300/20 bg-red-300/10 px-3 py-2 text-xs font-medium text-red-100 transition hover:border-red-300/40 hover:bg-red-300/20"
+            >
+              Delete
+            </button>
+
+            <Link
+              href="/"
+              className="rounded-full border border-white/10 bg-white/4 px-3 py-2 text-xs font-medium text-slate-300 transition hover:border-white/20 hover:bg-white/8 hover:text-white"
+            >
+              Switch profile
+            </Link>
+          </div>
         </header>
 
         <section className="flex-1 py-12">
@@ -158,17 +284,17 @@ export default async function TodayPage({
               </p>
 
               <h2 className="mt-4 text-4xl font-semibold tracking-tight">
-                {today.title}
+                {todayTitle}
               </h2>
 
               <p className="mt-3 text-base leading-7 text-slate-400">
-                {today.detail}
+                {todayDetail}
               </p>
 
               {!isRestDay && (
                 <button
                   type="button"
-                  className="mt-8 w-full rounded-2xl bg-white px-5 py-4 text-base font-semibold text-slate-950 transition active:scale-[0.99] hover:bg-cyan-100"
+                  className="mt-8 w-full rounded-2xl bg-white px-5 py-4 text-base font-semibold text-slate-950 transition hover:bg-cyan-100 active:scale-[0.99]"
                 >
                   Start Workout
                 </button>
@@ -176,19 +302,20 @@ export default async function TodayPage({
 
               {isRestDay && (
                 <div className="mt-8">
-                    <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-4">
-                        <p className="text-sm leading-6 text-slate-400">
-                            No workout is scheduled today. Rest, stretch, or take an easy
-                            walk if you feel like moving.
-                        </p>
-                    </div>
-                    <button
+                  <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-4">
+                    <p className="text-sm leading-6 text-slate-400">
+                      No workout is scheduled today. Rest, stretch, or take an
+                      easy walk if you feel like moving.
+                    </p>
+                  </div>
+                  <button
                     type="button"
-                    className="mt-4 w-full rounded-2xl border border-cyan-300/30 bg-cyan-300/10 px-5 py-4 text-base font-semibold text-cyan-100 transition active:scale-[0.99] hover:bg-cyan-300/20">
-                        Start a workout anyway
-                    </button>
+                    className="mt-4 w-full rounded-2xl border border-cyan-300/30 bg-cyan-300/10 px-5 py-4 text-base font-semibold text-cyan-100 transition hover:bg-cyan-300/20 active:scale-[0.99]"
+                  >
+                    Start a workout anyway
+                  </button>
                 </div>
-                )}
+              )}
             </div>
           </div>
 
@@ -201,44 +328,54 @@ export default async function TodayPage({
                 </h2>
               </div>
 
-              <span className="text-xs text-slate-500">4 main workouts</span>
+              <span className="text-xs text-slate-500">
+                {mainWorkoutCount} main workouts
+              </span>
             </div>
 
             <div className="mt-5 grid grid-cols-7 gap-2">
               {dayLabels.map((day) => {
                 const isToday = day.key === todayKey;
-                const scheduledDay = weeklySchedule[profileId][day.key];
+                const scheduledDay = profile.schedule[day.key];
+                const status = profile.completions?.[day.key] ?? "unset";
+                const statusLabel =
+                  status === "done"
+                    ? "completed"
+                    : status === "skipped"
+                      ? "skipped"
+                      : "not set";
 
                 return (
                   <div key={day.key} className="text-center">
                     <p className="mb-2 text-xs text-slate-500">{day.label}</p>
 
-                    <div
-                      className={`flex aspect-square items-center justify-center rounded-2xl border text-sm font-semibold ${
-                        isToday
-                          ? "border-cyan-300 bg-cyan-300 text-slate-950"
-                          : scheduledDay.type === "rest"
-                            ? "border-white/5 bg-white/2 text-slate-600"
-                            : "border-white/10 bg-white/4 text-slate-300"
+                    <button
+                      type="button"
+                      onClick={() => handleToggleDayStatus(day.key)}
+                      title={scheduledDay.title || `${day.label}: ${statusLabel}`}
+                      aria-label={`${day.label} workout status: ${statusLabel}. Click to change.`}
+                      className={`flex aspect-square w-full items-center justify-center rounded-2xl border text-sm font-semibold transition active:scale-95 ${
+                        status === "done"
+                          ? "border-emerald-300 bg-emerald-300 text-slate-950"
+                          : status === "skipped"
+                            ? "border-red-300 bg-red-300 text-slate-950"
+                            : isToday
+                              ? "border-cyan-300 bg-cyan-300/10 text-cyan-100"
+                              : scheduledDay.type === "rest"
+                                ? "border-white/5 bg-white/2 text-slate-600"
+                                : "border-white/10 bg-white/4 text-slate-300"
                       }`}
                     >
-                      {scheduledDay.type === "rest"
-                        ? "—"
-                        : scheduledDay.type === "optional"
-                          ? "○"
-                          : "•"}
-                    </div>
+                      {status === "done"
+                        ? "✓"
+                        : status === "skipped"
+                          ? "×"
+                          : "-"}
+                    </button>
                   </div>
                 );
               })}
             </div>
-          </section>
-
-          <section className="mt-10 rounded-4xl border border-white/10 bg-white/[0.035] p-6">
-            <p className="text-sm font-medium text-slate-400">Current focus</p>
-            <p className="mt-2 text-base leading-7 text-slate-200">
-              {profile.focus}
-            </p>
           </section>
         </section>
 
