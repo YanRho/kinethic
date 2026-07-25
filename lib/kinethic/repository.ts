@@ -14,7 +14,6 @@ import {
   emptySchedule,
   weekdays,
 } from "./domain";
-import { builtInExercises } from "./exercise-catalog";
 
 export interface KinEthicRepository {
   getSnapshot(): string;
@@ -152,10 +151,9 @@ function sanitize(value: unknown): KinEthicData {
     }
   }
 
-  const builtInIds = new Set(Object.keys(builtInExercises));
   const removedBuiltInIds = new Set(
     Object.values(data.exercises)
-      .filter((exercise) => !exercise.isCustom && !builtInIds.has(exercise.id))
+      .filter((exercise) => !exercise.isCustom)
       .map((exercise) => exercise.id),
   );
 
@@ -181,10 +179,6 @@ function sanitize(value: unknown): KinEthicData {
       ([exerciseId]) => !removedBuiltInIds.has(exerciseId),
     ),
   );
-  data.exercises = {
-    ...data.exercises,
-    ...builtInExercises,
-  };
 
   return data;
 }
@@ -200,7 +194,11 @@ class LocalStorageRepository implements KinEthicRepository {
       localStorage.setItem(STORAGE_KEY, raw);
     }
     try {
-      return JSON.stringify(sanitize(JSON.parse(raw)));
+      const sanitized = JSON.stringify(sanitize(JSON.parse(raw)));
+      if (sanitized !== raw) {
+        localStorage.setItem(STORAGE_KEY, sanitized);
+      }
+      return sanitized;
     } catch {
       return SERVER_SNAPSHOT;
     }

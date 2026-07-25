@@ -256,7 +256,7 @@ export function ExercisePicker({
           className="primary-button mt-5"
           onClick={() => setCreatingCustom(true)}
         >
-          Create Custom Exercise
+          Create Exercise
         </button>
 
         <div className="mt-5">
@@ -338,7 +338,7 @@ export function ExercisePicker({
       {creatingCustom && (
         <div className="fixed inset-0 z-30 grid place-items-center bg-black/75 p-4">
           <div className="panel w-full max-w-md p-5">
-            <h2 className="text-xl font-semibold">Create Custom Exercise</h2>
+            <h2 className="text-xl font-semibold">Create Exercise</h2>
             <label className="field mt-5">
               <span>Name</span>
               <input
@@ -347,7 +347,7 @@ export function ExercisePicker({
               />
             </label>
             <label className="field mt-4">
-              <span>Primary muscle</span>
+              <span>Muscle group</span>
               <input
                 value={customMuscle}
                 onChange={(event) => setCustomMuscle(event.target.value)}
