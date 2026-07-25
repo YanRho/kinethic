@@ -3,7 +3,10 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ProfileBadge } from "@/app/_components/ui";
-import { useKinEthicData } from "@/lib/kinethic/hooks";
+import {
+  useKinEthicData,
+  useKinEthicHydrated,
+} from "@/lib/kinethic/hooks";
 import { repository } from "@/lib/kinethic/repository";
 
 const accents = [
@@ -15,11 +18,13 @@ const accents = [
 
 export function ProfileHome() {
   const data = useKinEthicData();
+  const hydrated = useKinEthicHydrated();
   const profiles = Object.values(data.profiles);
   const router = useRouter();
-  const [creating, setCreating] = useState(profiles.length === 0);
+  const [creating, setCreating] = useState(false);
   const [name, setName] = useState("");
   const [accent, setAccent] = useState(accents[0]);
+  const showingCreator = creating || profiles.length === 0;
   const submit = (event: FormEvent) => {
     event.preventDefault();
     if (!name.trim()) {
@@ -35,7 +40,15 @@ export function ProfileHome() {
           Kin<span className="text-cyan-300">Ethic</span>
         </header>
         <section className="flex flex-1 items-center py-10">
-          {!creating ? (
+          {!hydrated ? (
+            <div
+              aria-busy="true"
+              aria-label="Loading local profiles"
+              className="w-full text-center text-sm text-slate-400"
+            >
+              Loading profiles…
+            </div>
+          ) : !showingCreator ? (
             <div className="w-full text-center">
               <h1 className="text-3xl font-semibold">
                 Who&apos;s training today?
@@ -45,7 +58,7 @@ export function ProfileHome() {
                   <button
                     key={profile.id}
                     onClick={() => router.push(`/today/${profile.id}`)}
-                    className="panel flex min-h-44 flex-col items-center justify-center p-4 transition hover:border-white/20 hover:bg-white/[0.07]"
+                    className="panel flex min-h-44 flex-col items-center justify-center p-4 transition hover:border-white/20 hover:bg-white/7"
                   >
                     <ProfileBadge profile={profile} />
                     <span className="mt-4 font-semibold">{profile.name}</span>

@@ -238,7 +238,7 @@ export function TodayScreen({ profileId }: { profileId: string }) {
                   return (
                     <div
                       key={day}
-                      className={`flex min-h-14 items-center justify-between rounded-2xl border px-4 ${day === today ? "theme-accent-surface" : "border-white/10 bg-white/[0.025]"}`}
+                      className={`flex min-h-14 items-center justify-between rounded-2xl border px-4 ${day === today ? "theme-accent-surface" : "border-white/10 bg-white/2.5"}`}
                     >
                       <span className="text-sm font-medium">
                         {dayLabel(day)}

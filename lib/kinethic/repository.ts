@@ -14,6 +14,7 @@ import {
   emptySchedule,
   weekdays,
 } from "./domain";
+import { builtInExercises } from "./exercise-catalog";
 
 export interface KinEthicRepository {
   getSnapshot(): string;
@@ -150,6 +151,40 @@ function sanitize(value: unknown): KinEthicData {
       data[key] = value[key] as never;
     }
   }
+
+  const builtInIds = new Set(Object.keys(builtInExercises));
+  const removedBuiltInIds = new Set(
+    Object.values(data.exercises)
+      .filter((exercise) => !exercise.isCustom && !builtInIds.has(exercise.id))
+      .map((exercise) => exercise.id),
+  );
+
+  if (removedBuiltInIds.size > 0) {
+    for (const workout of Object.values(data.workouts)) {
+      workout.exercises = workout.exercises.filter(
+        (item) => !removedBuiltInIds.has(item.exerciseId),
+      );
+    }
+    for (const preferences of Object.values(data.exercisePreferences)) {
+      preferences.favoriteExerciseIds =
+        preferences.favoriteExerciseIds.filter(
+          (exerciseId) => !removedBuiltInIds.has(exerciseId),
+        );
+      preferences.recentExerciseIds = preferences.recentExerciseIds.filter(
+        (exerciseId) => !removedBuiltInIds.has(exerciseId),
+      );
+    }
+  }
+
+  data.exercises = Object.fromEntries(
+    Object.entries(data.exercises).filter(
+      ([exerciseId]) => !removedBuiltInIds.has(exerciseId),
+    ),
+  );
+  data.exercises = {
+    ...data.exercises,
+    ...builtInExercises,
+  };
 
   return data;
 }

@@ -93,7 +93,7 @@ function SetContainer({
                       type="button"
                       aria-label="Save set correction"
                       title="Save correction"
-                      className="flex h-10 min-h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-lg font-bold text-white/80 transition hover:border-emerald-300/50 hover:bg-emerald-300 hover:text-emerald-950 focus-visible:border-emerald-300/50 focus-visible:bg-emerald-300 focus-visible:text-emerald-950 focus-visible:outline-none"
+                      className="flex h-10 min-h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/4 text-lg font-bold text-white/80 transition hover:border-emerald-300/50 hover:bg-emerald-300 hover:text-emerald-950 focus-visible:border-emerald-300/50 focus-visible:bg-emerald-300 focus-visible:text-emerald-950 focus-visible:outline-none"
                       onClick={() => setEditingSetNumber(null)}
                     >
                       ✓

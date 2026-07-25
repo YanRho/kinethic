@@ -55,7 +55,7 @@ function ExerciseSection({
                 onClick={() => onSelect(exercise.id)}
               >
                 <span
-                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border text-sm font-semibold ${selected ? "border-[var(--profile-accent)] bg-[var(--profile-accent)] text-[var(--profile-primary-text)]" : "border-[var(--profile-border)] text-slate-400"}`}
+                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border text-sm font-semibold ${selected ? "border-(--profile-accent) bg-(--profile-accent) text-(--profile-primary-text)" : "border-(--profile-border) text-slate-400"}`}
                 >
                   {selected ? selectionIndex + 1 : "+"}
                 </span>
@@ -79,14 +79,16 @@ function ExerciseSection({
               >
                 {favorite ? "★" : "☆"}
               </button>
-              <button
-                type="button"
-                aria-label={`Delete ${exercise.name}`}
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-lg text-red-300 transition hover:bg-red-300/10"
-                onClick={() => onDelete(exercise)}
-              >
-                ×
-              </button>
+              {exercise.isCustom && (
+                <button
+                  type="button"
+                  aria-label={`Delete ${exercise.name}`}
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-lg text-red-300 transition hover:bg-red-300/10"
+                  onClick={() => onDelete(exercise)}
+                >
+                  ×
+                </button>
+              )}
             </div>
           );
         })}
@@ -113,7 +115,6 @@ export function ExercisePicker({
   const exercises = useMemo(
     () =>
       Object.values(data.exercises)
-        .filter((exercise) => exercise.isCustom)
         .sort((a, b) => a.name.localeCompare(b.name)),
     [data.exercises],
   );
@@ -229,10 +230,10 @@ export function ExercisePicker({
     <div
       aria-modal="true"
       role="dialog"
-      className="profile-overlay fixed inset-0 z-[100] min-h-dvh overflow-y-auto overscroll-contain bg-[var(--profile-background)] text-white"
+      className="profile-overlay fixed inset-0 z-100 min-h-dvh overflow-y-auto overscroll-contain bg-(--profile-background) text-white"
     >
       <div className="mx-auto min-h-full max-w-2xl px-4 pb-28">
-        <header className="sticky top-0 z-20 -mx-4 border-b border-[var(--profile-border)] bg-[var(--profile-background)] px-4 pb-4 pt-4">
+        <header className="sticky top-0 z-20 -mx-4 border-b border-(--profile-border) bg-(--profile-background) px-4 pb-4 pt-4">
           <div className="flex items-center justify-between gap-3">
             <h1 className="text-xl font-semibold">Add exercises</h1>
             <button type="button" className="muted-button" onClick={onClose}>
@@ -322,7 +323,7 @@ export function ExercisePicker({
         )}
       </div>
 
-      <div className="fixed inset-x-0 bottom-0 z-20 border-t border-[var(--profile-border)] bg-[var(--profile-background)] p-4">
+      <div className="fixed inset-x-0 bottom-0 z-20 border-t border-(--profile-border) bg-(--profile-background) p-4">
         <button
           type="button"
           className="primary-button mx-auto max-w-2xl"
