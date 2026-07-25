@@ -175,7 +175,7 @@ export function SplitEditor({
         </div>
       </form>
       {selecting && (
-        <div className="fixed inset-0 z-20 overflow-y-auto bg-[#080b12] px-4 py-5 text-white">
+        <div className="profile-overlay fixed inset-0 z-20 overflow-y-auto px-4 py-5 text-white">
           <div className="mx-auto max-w-md">
             <div className="flex items-center justify-between">
               <div>

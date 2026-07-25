@@ -111,6 +111,15 @@ button {
   );
 }
 
+.profile-overlay {
+  background-color: var(--profile-background);
+  background-image: radial-gradient(
+    circle at 50% -15%,
+    color-mix(in srgb, var(--profile-accent-strong) 13%, transparent),
+    transparent 32rem
+  );
+}
+
 .profile-theme .panel {
   border-color: var(--profile-border);
   background-color: var(--profile-panel);

@@ -633,7 +633,7 @@ export function WorkoutEditor({
         </div>
       </form>
       {picker && (
-        <div className="fixed inset-0 z-20 bg-[#080b12] px-4 py-5 text-white">
+        <div className="profile-overlay fixed inset-0 z-20 px-4 py-5 text-white">
           <div className="mx-auto max-w-md">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-semibold">Add exercise</h2>
