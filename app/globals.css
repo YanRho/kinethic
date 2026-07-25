@@ -3,6 +3,16 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --profile-accent: #67e8f9;
+  --profile-accent-strong: #60a5fa;
+  --profile-accent-soft: color-mix(in srgb, #67e8f9 12%, transparent);
+  --profile-accent-border: color-mix(in srgb, #67e8f9 42%, transparent);
+  --profile-background: #06101e;
+  --profile-panel: #0c1929;
+  --profile-panel-strong: #102238;
+  --profile-border: #1f3956;
+  --profile-muted: #91a8c1;
+  --profile-primary-text: #03111d;
 }
 
 @theme inline {
@@ -23,6 +33,179 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+button,
+a,
+input,
+select,
+textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+button {
+  cursor: pointer;
+}
+
+@layer components {
+  .panel {
+    @apply rounded-3xl border border-white/10 bg-white/[0.035];
+  }
+  .primary-button {
+    @apply flex min-h-12 w-full items-center justify-center rounded-2xl bg-white px-5 py-3 text-base font-semibold text-slate-950 transition hover:bg-cyan-100 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40;
+  }
+  .muted-button {
+    @apply flex min-h-12 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-semibold text-slate-200 transition hover:bg-white/[0.08];
+  }
+  .danger-button {
+    @apply flex min-h-12 items-center justify-center rounded-2xl border border-red-300/20 bg-red-300/10 px-4 py-3 text-sm font-semibold text-red-100;
+  }
+  .touch-button {
+    @apply min-h-11;
+  }
+  .eyebrow {
+    @apply text-xs font-semibold uppercase tracking-[0.18em];
+    color: var(--profile-accent);
+  }
+  .field {
+    @apply block text-sm font-medium text-slate-300;
+  }
+  .field input,
+  .field select,
+  .field textarea {
+    @apply mt-2 min-h-12 w-full rounded-2xl border border-white/10 bg-[#080b12] px-4 py-3 text-base text-white outline-none placeholder:text-slate-600 focus:border-cyan-300;
+    max-width: 40rem;
+  }
+}
+
+.brand-accent,
+.theme-accent-text {
+  color: var(--profile-accent);
+}
+
+.profile-theme .primary-button {
+  background: var(--profile-accent);
+  color: var(--profile-primary-text);
+}
+
+.profile-theme .primary-button:hover {
+  background: color-mix(in srgb, var(--profile-accent) 86%, white);
+}
+
+.profile-theme .field input:focus,
+.profile-theme .field select:focus,
+.profile-theme .field textarea:focus {
+  border-color: var(--profile-accent);
+}
+
+.theme-accent-surface {
+  border-color: var(--profile-accent-border);
+  background: var(--profile-accent-soft);
+}
+
+.profile-theme {
+  background-color: var(--profile-background);
+  background-image: radial-gradient(
+    circle at 50% -15%,
+    color-mix(in srgb, var(--profile-accent-strong) 13%, transparent),
+    transparent 38rem
+  );
+}
+
+.profile-theme .panel {
+  border-color: var(--profile-border);
+  background-color: var(--profile-panel);
+  background-image: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--profile-accent) 5%, transparent),
+    transparent 55%
+  );
+}
+
+.profile-theme .theme-accent-surface {
+  border-color: var(--profile-accent-border);
+  background-color: var(--profile-accent-soft);
+  background-image: none;
+}
+
+.profile-theme .muted-button {
+  border-color: var(--profile-border);
+  background-color: var(--profile-panel-strong);
+}
+
+.profile-theme .muted-button:hover {
+  border-color: var(--profile-accent-border);
+  background-color: color-mix(
+    in srgb,
+    var(--profile-panel-strong) 82%,
+    var(--profile-accent)
+  );
+}
+
+.profile-theme .field input,
+.profile-theme .field select,
+.profile-theme .field textarea {
+  border-color: var(--profile-border);
+  background-color: color-mix(in srgb, var(--profile-background) 72%, black);
+}
+
+.profile-theme .text-slate-300,
+.profile-theme .text-slate-400,
+.profile-theme .text-slate-500 {
+  color: var(--profile-muted);
+}
+
+.profile-theme .fixed.border-t {
+  border-color: var(--profile-border);
+  background-color: color-mix(
+    in srgb,
+    var(--profile-background) 95%,
+    transparent
+  );
+}
+
+@media (min-width: 768px) {
+  /* Let Today use the available browser width while retaining its phone layout. */
+  main > div.mx-auto.max-w-md {
+    max-width: 64rem;
+  }
+
+  /* Management collections become scannable card grids on larger screens. */
+  .max-w-5xl > div.mt-5.space-y-3,
+  .max-w-5xl > form > div.mt-5.space-y-3 {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.875rem;
+  }
+
+  .max-w-5xl > div.mt-5.space-y-3 > *,
+  .max-w-5xl > form > div.mt-5.space-y-3 > * {
+    margin-top: 0;
+  }
+}
+
+@media (min-width: 1024px) {
+  /* The Today summary and weekly schedule sit side-by-side on desktop. */
+  main > div.mx-auto.max-w-md > section {
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(20rem, 0.85fr);
+    column-gap: 2rem;
+    align-items: start;
+  }
+
+  main > div.mx-auto.max-w-md > section > :first-child,
+  main > div.mx-auto.max-w-md > section > :nth-child(2),
+  main > div.mx-auto.max-w-md > section > nav,
+  main > div.mx-auto.max-w-md > section > button {
+    grid-column: 1 / -1;
+  }
+
+  main > div.mx-auto.max-w-md > section > section {
+    margin-top: 1rem;
+  }
+
+  main > div.mx-auto.max-w-md > section > nav {
+    max-width: 32rem;
+  }
 }
 
 .profile-creator-panel {
