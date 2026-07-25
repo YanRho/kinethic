@@ -11,6 +11,7 @@ import {
 } from "@/lib/kinethic/domain";
 import { useKinEthicData } from "@/lib/kinethic/hooks";
 import { newWorkoutExercise, repository } from "@/lib/kinethic/repository";
+import { ExercisePicker } from "@/features/exercises/exercise-picker";
 
 export function WorkoutEditor({
   profileId,
@@ -37,7 +38,6 @@ export function WorkoutEditor({
     () => new Set(existing?.exercises[0] ? [existing.exercises[0].id] : []),
   );
   const [picker, setPicker] = useState(false);
-  const [query, setQuery] = useState("");
   const [draggedExerciseId, setDraggedExerciseId] = useState<Id | null>(null);
   const [dragOverExerciseId, setDragOverExerciseId] = useState<Id | null>(null);
   const cardElements = useRef(new Map<Id, HTMLElement>());
@@ -105,13 +105,15 @@ export function WorkoutEditor({
       </PageShell>
     );
 
-  const addExercise = (exerciseId: Id) => {
-    const newItem = newWorkoutExercise(exerciseId);
+  const addExercises = (exerciseIds: Id[]) => {
+    const newItems = exerciseIds.map((exerciseId) =>
+      newWorkoutExercise(exerciseId),
+    );
+    const lastNewItem = newItems.at(-1);
 
-    setItems((current) => [...current, newItem]);
-    setExpandedExerciseIds(new Set([newItem.id]));
+    setItems((current) => [...current, ...newItems]);
+    setExpandedExerciseIds(new Set(lastNewItem ? [lastNewItem.id] : []));
     setPicker(false);
-    setQuery("");
   };
   const toggleExercise = (exerciseId: Id) => {
     setExpandedExerciseIds((current) => {
@@ -134,14 +136,6 @@ export function WorkoutEditor({
       next.delete(exerciseId);
       return next;
     });
-  };
-  const createExercise = () => {
-    if (!query.trim()) {
-      return;
-    }
-    const exercise = repository.saveExercise(query);
-
-    addExercise(exercise.id);
   };
   const update = (index: number, patch: Partial<WorkoutExercise>) =>
     setItems((current) =>
@@ -203,12 +197,6 @@ export function WorkoutEditor({
     });
     router.push(`/profiles/${profileId}/workouts`);
   };
-  const matches = Object.values(data.exercises).filter((exercise) =>
-    exercise.name
-      .toLocaleLowerCase()
-      .includes(query.trim().toLocaleLowerCase()),
-  );
-
   return (
     <PageShell
       backHref={`/profiles/${profileId}/workouts`}
@@ -633,52 +621,16 @@ export function WorkoutEditor({
         </div>
       </form>
       {picker && (
-        <div className="profile-overlay fixed inset-0 z-20 px-4 py-5 text-white">
-          <div className="mx-auto max-w-md">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold">Add exercise</h2>
-              <button className="muted-button" onClick={() => setPicker(false)}>
-                Close
-              </button>
-            </div>
-            <label className="field mt-6">
-              <span>Search exercises</span>
-              <input
-                autoFocus
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Type an exercise name"
-              />
-            </label>
-            <div className="mt-5 space-y-2">
-              {matches.map((exercise) => (
-                <button
-                  className="panel flex min-h-14 w-full items-center px-4 text-left font-medium"
-                  key={exercise.id}
-                  onClick={() => addExercise(exercise.id)}
-                >
-                  {exercise.name}
-                </button>
-              ))}
-              {query.trim() &&
-                !matches.some(
-                  (x) =>
-                    x.name.toLocaleLowerCase() ===
-                    query.trim().toLocaleLowerCase(),
-                ) && (
-                  <button onClick={createExercise} className="primary-button">
-                    Create “{query.trim()}”
-                  </button>
-                )}
-              {!query.trim() && matches.length === 0 && (
-                <p className="panel p-5 text-sm leading-6 text-slate-400">
-                  Search your local exercise library, or type a new exercise
-                  name to create it.
-                </p>
-              )}
-            </div>
-          </div>
-        </div>
+        <ExercisePicker
+          profileId={profileId}
+          onAdd={addExercises}
+          onClose={() => setPicker(false)}
+          onDelete={(exerciseId) =>
+            setItems((current) =>
+              current.filter((item) => item.exerciseId !== exerciseId),
+            )
+          }
+        />
       )}
     </PageShell>
   );

@@ -116,13 +116,19 @@ export type WorkoutSession = {
   exercises: SessionExercise[];
 };
 
+export type ExercisePreferences = {
+  favoriteExerciseIds: Id[];
+  recentExerciseIds: Id[];
+};
+
 export type KinEthicData = {
-  schemaVersion: 4;
+  schemaVersion: 5;
   profiles: Record<Id, Profile>;
   splits: Record<Id, WorkoutSplit>;
   workouts: Record<Id, Workout>;
   exercises: Record<Id, ExerciseDefinition>;
   workoutSessions: Record<Id, WorkoutSession>;
+  exercisePreferences: Record<Id, ExercisePreferences>;
 };
 
 export const emptySchedule = (): WeeklySchedule => ({
@@ -136,12 +142,13 @@ export const emptySchedule = (): WeeklySchedule => ({
 });
 
 export const emptyData = (): KinEthicData => ({
-  schemaVersion: 4,
+  schemaVersion: 5,
   profiles: {},
   splits: {},
   workouts: {},
   exercises: {},
   workoutSessions: {},
+  exercisePreferences: {},
 });
 
 export const dayLabel = (day: DayKey) => day[0].toUpperCase() + day.slice(1);

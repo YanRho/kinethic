@@ -37,7 +37,15 @@ export interface KinEthicRepository {
     exercises: WorkoutExercise[];
   }): Workout;
   deleteWorkout(workoutId: Id): void;
-  saveExercise(name: string, trackingType?: TrackingType): ExerciseDefinition;
+  saveExercise(
+    name: string,
+    trackingType?: TrackingType,
+    muscleGroup?: string,
+    equipment?: string,
+  ): ExerciseDefinition;
+  deleteExercise(exerciseId: Id): void;
+  toggleFavoriteExercise(profileId: Id, exerciseId: Id): void;
+  recordRecentExercises(profileId: Id, exerciseIds: Id[]): void;
   startWorkoutSession(profileId: Id, workoutId: Id): WorkoutSession | null;
   saveWorkoutSession(session: WorkoutSession): void;
   finishWorkoutSession(sessionId: Id): WorkoutSession | null;
@@ -123,7 +131,10 @@ function migrateLegacy(raw: string | null): KinEthicData {
 }
 
 function sanitize(value: unknown): KinEthicData {
-  if (!isRecord(value) || ![1, 2, 3, 4].includes(Number(value.schemaVersion))) {
+  if (
+    !isRecord(value) ||
+    ![1, 2, 3, 4, 5].includes(Number(value.schemaVersion))
+  ) {
     return emptyData();
   }
   const data = emptyData();
@@ -133,11 +144,13 @@ function sanitize(value: unknown): KinEthicData {
     "workouts",
     "exercises",
     "workoutSessions",
+    "exercisePreferences",
   ] as const) {
     if (isRecord(value[key])) {
       data[key] = value[key] as never;
     }
   }
+
   return data;
 }
 
@@ -208,6 +221,7 @@ class LocalStorageRepository implements KinEthicRepository {
     Object.values(data.workoutSessions)
       .filter((session) => session.profileId === profileId)
       .forEach((session) => delete data.workoutSessions[session.id]);
+    delete data.exercisePreferences[profileId];
     this.write(data);
   }
   saveSplit(input: {
@@ -295,7 +309,12 @@ class LocalStorageRepository implements KinEthicRepository {
         }
     this.write(data);
   }
-  saveExercise(name: string, trackingType: TrackingType = "weight_reps") {
+  saveExercise(
+    name: string,
+    trackingType: TrackingType = "weight_reps",
+    muscleGroup = "Other",
+    equipment = "Other",
+  ) {
     const data = this.read();
     const normalized = name.trim().toLocaleLowerCase();
     const found = Object.values(data.exercises).find(
@@ -307,14 +326,75 @@ class LocalStorageRepository implements KinEthicRepository {
     const exercise: ExerciseDefinition = {
       id: id(),
       name: name.trim(),
-      muscleGroups: [],
-      equipment: [],
+      muscleGroups: [muscleGroup],
+      equipment: [equipment],
       isCustom: true,
       trackingType,
     };
     data.exercises[exercise.id] = exercise;
     this.write(data);
     return exercise;
+  }
+  deleteExercise(exerciseId: Id) {
+    const data = this.read();
+    const exercise = data.exercises[exerciseId];
+
+    if (!exercise?.isCustom) {
+      return;
+    }
+
+    delete data.exercises[exerciseId];
+
+    for (const workout of Object.values(data.workouts)) {
+      workout.exercises = workout.exercises.filter(
+        (item) => item.exerciseId !== exerciseId,
+      );
+    }
+
+    for (const preferences of Object.values(data.exercisePreferences)) {
+      preferences.favoriteExerciseIds =
+        preferences.favoriteExerciseIds.filter((id) => id !== exerciseId);
+      preferences.recentExerciseIds = preferences.recentExerciseIds.filter(
+        (id) => id !== exerciseId,
+      );
+    }
+
+    this.write(data);
+  }
+  toggleFavoriteExercise(profileId: Id, exerciseId: Id) {
+    const data = this.read();
+    const preferences = data.exercisePreferences[profileId] ?? {
+      favoriteExerciseIds: [],
+      recentExerciseIds: [],
+    };
+    const isFavorite = preferences.favoriteExerciseIds.includes(exerciseId);
+
+    data.exercisePreferences[profileId] = {
+      ...preferences,
+      favoriteExerciseIds: isFavorite
+        ? preferences.favoriteExerciseIds.filter((id) => id !== exerciseId)
+        : [...preferences.favoriteExerciseIds, exerciseId],
+    };
+    this.write(data);
+  }
+  recordRecentExercises(profileId: Id, exerciseIds: Id[]) {
+    const data = this.read();
+    const preferences = data.exercisePreferences[profileId] ?? {
+      favoriteExerciseIds: [],
+      recentExerciseIds: [],
+    };
+    const recentExerciseIds = [
+      ...exerciseIds,
+      ...preferences.recentExerciseIds.filter(
+        (exerciseId) => !exerciseIds.includes(exerciseId),
+      ),
+    ].slice(0, 8);
+
+    data.exercisePreferences[profileId] = {
+      ...preferences,
+      recentExerciseIds,
+    };
+    this.write(data);
   }
   startWorkoutSession(profileId: Id, workoutId: Id) {
     const data = this.read();
