@@ -19,6 +19,7 @@ import {
   muscleGroupOptions,
   weekdays,
 } from "./domain";
+import { builtInExercises } from "./exercise-catalog";
 
 export interface KinEthicRepository {
   getSnapshot(): string;
@@ -164,11 +165,6 @@ function sanitize(value: unknown): KinEthicData {
     }
   }
 
-<<<<<<< HEAD
-  const removedBuiltInIds = new Set(
-    Object.values(data.exercises)
-      .filter((exercise) => !exercise.isCustom)
-=======
   for (const workout of Object.values(data.workouts)) {
     for (const exercise of workout.exercises) {
       exercise.trackingType = normalizeTrackingType(exercise.trackingType);
@@ -246,7 +242,6 @@ function sanitize(value: unknown): KinEthicData {
         (exercise) =>
           exercise.source === "builtin" && !builtInIds.has(exercise.id),
       )
->>>>>>> dev
       .map((exercise) => exercise.id),
   );
 
@@ -272,6 +267,10 @@ function sanitize(value: unknown): KinEthicData {
       ([exerciseId]) => !removedBuiltInIds.has(exerciseId),
     ),
   );
+  data.exercises = {
+    ...data.exercises,
+    ...builtInExercises,
+  };
 
   return data;
 }
