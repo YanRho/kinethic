@@ -1,8 +1,10 @@
 import {
   DayKey,
+  Equipment,
   ExerciseDefinition,
   Id,
   KinEthicData,
+  MuscleGroup,
   Profile,
   RepTarget,
   TrackingType,
@@ -12,6 +14,9 @@ import {
   WorkoutSplit,
   emptyData,
   emptySchedule,
+  equipmentOptions,
+  getExerciseKey,
+  muscleGroupOptions,
   weekdays,
 } from "./domain";
 import { builtInExercises } from "./exercise-catalog";
@@ -41,8 +46,8 @@ export interface KinEthicRepository {
   saveExercise(
     name: string,
     trackingType?: TrackingType,
-    muscleGroup?: string,
-    equipment?: string,
+    muscleGroups?: MuscleGroup[],
+    equipment?: Equipment,
   ): ExerciseDefinition;
   deleteExercise(exerciseId: Id): void;
   toggleFavoriteExercise(profileId: Id, exerciseId: Id): void;
@@ -59,6 +64,12 @@ const SERVER_SNAPSHOT = JSON.stringify(emptyData());
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
+const normalizeTrackingType = (value: unknown): TrackingType =>
+  value === "reps"
+    ? "reps"
+    : value === "duration" || value === "cardio"
+      ? "duration"
+      : "weight_reps";
 const id = () => crypto.randomUUID();
 const now = () => new Date().toISOString();
 
@@ -134,7 +145,9 @@ function migrateLegacy(raw: string | null): KinEthicData {
 function sanitize(value: unknown): KinEthicData {
   if (
     !isRecord(value) ||
-    ![1, 2, 3, 4, 5].includes(Number(value.schemaVersion))
+    ![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13].includes(
+      Number(value.schemaVersion),
+    )
   ) {
     return emptyData();
   }
@@ -152,10 +165,83 @@ function sanitize(value: unknown): KinEthicData {
     }
   }
 
+  for (const workout of Object.values(data.workouts)) {
+    for (const exercise of workout.exercises) {
+      exercise.trackingType = normalizeTrackingType(exercise.trackingType);
+    }
+  }
+  for (const session of Object.values(data.workoutSessions)) {
+    for (const exercise of session.exercises) {
+      exercise.trackingType = normalizeTrackingType(exercise.trackingType);
+    }
+  }
+
+  data.exercises = Object.fromEntries(
+    Object.entries(data.exercises).map(([exerciseId, exercise]) => {
+      const legacy = exercise as ExerciseDefinition & {
+        isCustom?: boolean;
+        muscleGroup?: string;
+        muscleGroups?: string[];
+        equipment?: string[] | string;
+      };
+      const rawMuscleGroups = legacy.muscleGroups ??
+        (legacy.muscleGroup ? [legacy.muscleGroup] : []);
+      const rawEquipment = Array.isArray(legacy.equipment)
+        ? legacy.equipment[0]
+        : legacy.equipment;
+      const equipmentAliases: Record<string, Equipment> = {
+        Cable: "Cable Machine",
+        Dumbbell: "Dumbbells",
+        "Pulldown Machine": "Machine",
+        Barbell: "Dumbbells",
+        Kettlebell: "Dumbbells",
+        Other: "Bodyweight",
+      };
+      const muscleAliases: Record<string, MuscleGroup> = {
+        "Full Body": "Core",
+        "Hip Abductors": "Glutes",
+        Cardio: "Core",
+        Other: "Core",
+      };
+      const muscleGroups = [
+        ...new Set(
+          rawMuscleGroups.map((muscleGroup) =>
+            muscleGroupOptions.includes(muscleGroup as MuscleGroup)
+              ? (muscleGroup as MuscleGroup)
+              : (muscleAliases[muscleGroup] ?? "Core"),
+          ),
+        ),
+      ];
+      const equipment = equipmentOptions.includes(rawEquipment as Equipment)
+        ? (rawEquipment as Equipment)
+        : (equipmentAliases[rawEquipment ?? ""] ?? "Bodyweight");
+
+      return [
+        exerciseId,
+        {
+          id: legacy.id,
+          name: legacy.name,
+          muscleGroups: muscleGroups.length > 0 ? muscleGroups : ["Core"],
+          equipment,
+          source:
+            legacy.source === "custom" || legacy.source === "builtin"
+              ? legacy.source
+              : legacy.isCustom
+                ? "custom"
+                : "builtin",
+          trackingType: normalizeTrackingType(legacy.trackingType),
+        } satisfies ExerciseDefinition,
+      ];
+    }),
+  );
+
   const builtInIds = new Set(Object.keys(builtInExercises));
   const removedBuiltInIds = new Set(
     Object.values(data.exercises)
-      .filter((exercise) => !exercise.isCustom && !builtInIds.has(exercise.id))
+      .filter(
+        (exercise) =>
+          exercise.source === "builtin" && !builtInIds.has(exercise.id),
+      )
       .map((exercise) => exercise.id),
   );
 
@@ -347,13 +433,14 @@ class LocalStorageRepository implements KinEthicRepository {
   saveExercise(
     name: string,
     trackingType: TrackingType = "weight_reps",
-    muscleGroup = "Other",
-    equipment = "Other",
+    muscleGroups: MuscleGroup[] = ["Core"],
+    equipment: Equipment = "Bodyweight",
   ) {
     const data = this.read();
-    const normalized = name.trim().toLocaleLowerCase();
+    const exerciseKey = getExerciseKey(name, equipment);
     const found = Object.values(data.exercises).find(
-      (exercise) => exercise.name.toLocaleLowerCase() === normalized,
+      (exercise) =>
+        getExerciseKey(exercise.name, exercise.equipment) === exerciseKey,
     );
     if (found) {
       return found;
@@ -361,9 +448,10 @@ class LocalStorageRepository implements KinEthicRepository {
     const exercise: ExerciseDefinition = {
       id: id(),
       name: name.trim(),
-      muscleGroups: [muscleGroup],
-      equipment: [equipment],
-      isCustom: true,
+      muscleGroups:
+        muscleGroups.length > 0 ? [...new Set(muscleGroups)] : ["Core"],
+      equipment,
+      source: "custom",
       trackingType,
     };
     data.exercises[exercise.id] = exercise;
@@ -374,7 +462,7 @@ class LocalStorageRepository implements KinEthicRepository {
     const data = this.read();
     const exercise = data.exercises[exerciseId];
 
-    if (!exercise?.isCustom) {
+    if (exercise?.source !== "custom") {
       return;
     }
 
@@ -464,10 +552,6 @@ class LocalStorageRepository implements KinEthicRepository {
           data.exercises[item.exerciseId]?.trackingType ??
           "weight_reps",
         targetDurationSeconds: item.durationSeconds,
-        plannedDistance: item.distance,
-        plannedSpeed: item.speed,
-        plannedIncline: item.incline,
-        plannedResistance: item.resistance,
         sets: Array.from({ length: item.sets }, (_, index) => ({
           setNumber: index + 1,
           actualWeight: item.weight,
@@ -522,5 +606,4 @@ export const newWorkoutExercise = (
   restSeconds: 90,
   trackingType,
   ...(trackingType === "duration" ? { durationSeconds: 60 } : {}),
-  ...(trackingType === "cardio" ? { sets: 1, durationSeconds: 1200 } : {}),
 });

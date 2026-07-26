@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { ArrowLeft, House } from "lucide-react";
 
 type BackButtonProps = {
   fallbackHref: string;
@@ -52,8 +53,43 @@ export function BackButton({
   };
 
   return (
-    <button className="touch-button muted-button" onClick={navigateBack}>
-      ← Back
+    <button
+      type="button"
+      className="touch-button muted-button gap-2"
+      onClick={navigateBack}
+    >
+      <ArrowLeft aria-hidden="true" className="h-4 w-4" />
+      Back
+    </button>
+  );
+}
+
+export function HomeButton({
+  confirmMessage,
+  onBeforeHome,
+}: {
+  confirmMessage?: string;
+  onBeforeHome?: () => void;
+}) {
+  const router = useRouter();
+
+  const navigateHome = () => {
+    if (confirmMessage && !window.confirm(confirmMessage)) {
+      return;
+    }
+
+    onBeforeHome?.();
+    router.replace("/");
+  };
+
+  return (
+    <button
+      type="button"
+      className="touch-button muted-button gap-2"
+      onClick={navigateHome}
+    >
+      <House aria-hidden="true" className="h-4 w-4" />
+      Home
     </button>
   );
 }

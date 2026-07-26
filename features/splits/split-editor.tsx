@@ -84,7 +84,7 @@ export function SplitEditor({
     if (activate || !profile.activeSplitId) {
       repository.setActiveSplit(profileId, split.id);
     }
-    router.push(`/profiles/${profileId}/splits`);
+    router.replace(`/profiles/${profileId}/splits`);
   };
   return (
     <PageShell

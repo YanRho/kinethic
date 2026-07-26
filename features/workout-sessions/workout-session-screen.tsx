@@ -28,10 +28,6 @@ function targetText(exercise: SessionExercise) {
     return `${exercise.sets.length} × ${exercise.targetDurationSeconds ?? 0}s`;
   }
 
-  if (exercise.trackingType === "cardio") {
-    return `${Math.round((exercise.targetDurationSeconds ?? 0) / 60)} min cardio`;
-  }
-
   if (exercise.target.kind === "exact") {
     return `${exercise.sets.length} × ${exercise.target.reps}`;
   }

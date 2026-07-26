@@ -10,7 +10,36 @@ export const weekdays = [
 
 export type DayKey = (typeof weekdays)[number];
 export type Id = string;
-export type TrackingType = "weight_reps" | "reps" | "duration" | "cardio";
+export type TrackingType = "weight_reps" | "reps" | "duration";
+
+export const muscleGroupOptions = [
+  "Chest",
+  "Back",
+  "Shoulders",
+  "Biceps",
+  "Triceps",
+  "Quadriceps",
+  "Hamstrings",
+  "Glutes",
+  "Calves",
+  "Core",
+] as const;
+
+export type MuscleGroup = (typeof muscleGroupOptions)[number];
+
+export const equipmentOptions = [
+  "Machine",
+  "Cable Machine",
+  "Smith Machine",
+  "Dumbbells",
+  "Bodyweight",
+  "Resistance Band",
+] as const;
+
+export type Equipment = (typeof equipmentOptions)[number];
+
+export const getExerciseKey = (name: string, equipment: Equipment): string =>
+  `${name.trim().toLocaleLowerCase()}::${equipment.toLocaleLowerCase()}`;
 
 export type Profile = {
   id: Id;
@@ -47,10 +76,6 @@ export type WorkoutExercise = {
   notes?: string;
   trackingType?: TrackingType;
   durationSeconds?: number;
-  distance?: number;
-  speed?: number;
-  incline?: number;
-  resistance?: number;
 };
 
 export type Workout = {
@@ -65,9 +90,9 @@ export type Workout = {
 export type ExerciseDefinition = {
   id: Id;
   name: string;
-  muscleGroups: string[];
-  equipment: string[];
-  isCustom: boolean;
+  muscleGroups: MuscleGroup[];
+  equipment: Equipment;
+  source: "builtin" | "custom";
   trackingType: TrackingType;
 };
 
@@ -77,10 +102,6 @@ export type SessionSet = {
   actualReps?: number;
   completedAt?: string;
   actualDurationSeconds?: number;
-  actualDistance?: number;
-  actualSpeed?: number;
-  actualIncline?: number;
-  actualResistance?: number;
 };
 
 export type SessionExercise = {
@@ -98,10 +119,6 @@ export type SessionExercise = {
   skipReason?: string;
   trackingType: TrackingType;
   targetDurationSeconds?: number;
-  plannedDistance?: number;
-  plannedSpeed?: number;
-  plannedIncline?: number;
-  plannedResistance?: number;
 };
 
 export type WorkoutSession = {
@@ -122,7 +139,7 @@ export type ExercisePreferences = {
 };
 
 export type KinEthicData = {
-  schemaVersion: 5;
+  schemaVersion: 13;
   profiles: Record<Id, Profile>;
   splits: Record<Id, WorkoutSplit>;
   workouts: Record<Id, Workout>;
@@ -142,7 +159,7 @@ export const emptySchedule = (): WeeklySchedule => ({
 });
 
 export const emptyData = (): KinEthicData => ({
-  schemaVersion: 5,
+  schemaVersion: 13,
   profiles: {},
   splits: {},
   workouts: {},

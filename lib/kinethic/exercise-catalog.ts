@@ -1,41 +1,114 @@
-import { ExerciseDefinition } from "./domain";
+import {
+  Equipment,
+  ExerciseDefinition,
+  MuscleGroup,
+  TrackingType,
+} from "./domain";
 
-const exercise = (
-  id: string,
+const builtInExercise = (
+  slug: string,
   name: string,
-  muscleGroup: string,
-  equipment: string,
-  trackingType: ExerciseDefinition["trackingType"] = "weight_reps",
+  muscleGroup: MuscleGroup,
+  equipment: Equipment,
+  trackingType: TrackingType = "weight_reps",
 ): ExerciseDefinition => ({
-  id: `builtin:${id}`,
+  id: `builtin:${slug}`,
   name,
   muscleGroups: [muscleGroup],
-  equipment: [equipment],
-  isCustom: false,
+  equipment,
+  source: "builtin",
   trackingType,
 });
 
 const catalog = [
-  exercise("barbell-bench-press", "Barbell Bench Press", "Chest", "Barbell"),
-  exercise("lat-pulldown", "Lat Pulldown", "Back", "Cable"),
-  exercise(
-    "dumbbell-shoulder-press",
-    "Dumbbell Shoulder Press",
+  builtInExercise("machine-chest-press", "Machine Chest Press", "Chest", "Machine"),
+  builtInExercise(
+    "incline-smith-machine-press",
+    "Incline Smith Machine Press",
+    "Chest",
+    "Smith Machine",
+  ),
+  builtInExercise("pec-deck", "Pec Deck", "Chest", "Machine"),
+  builtInExercise(
+    "machine-shoulder-press",
+    "Machine Shoulder Press",
     "Shoulders",
-    "Dumbbell",
+    "Machine",
   ),
-  exercise("leg-extension", "Leg Extension", "Quadriceps", "Machine"),
-  exercise("plank", "Plank", "Core", "Bodyweight", "duration"),
-  exercise("kettlebell-swing", "Kettlebell Swing", "Full Body", "Kettlebell"),
-  exercise("treadmill-run", "Treadmill Run", "Cardio", "Treadmill", "cardio"),
-  exercise(
-    "band-lateral-walk",
-    "Band Lateral Walk",
-    "Hip Abductors",
-    "Resistance Band",
-    "reps",
+  builtInExercise("lat-pulldown", "Lat Pulldown", "Back", "Cable Machine"),
+  builtInExercise(
+    "seated-cable-row",
+    "Seated Cable Row",
+    "Back",
+    "Cable Machine",
   ),
-] as const;
+  builtInExercise(
+    "reverse-pec-deck",
+    "Reverse Pec Deck",
+    "Shoulders",
+    "Machine",
+  ),
+  builtInExercise(
+    "lateral-raise",
+    "Lateral Raise",
+    "Shoulders",
+    "Dumbbells",
+  ),
+  builtInExercise("biceps-curl", "Biceps Curl", "Biceps", "Dumbbells"),
+  builtInExercise("hammer-curl", "Hammer Curl", "Biceps", "Dumbbells"),
+  builtInExercise(
+    "rope-triceps-pushdown",
+    "Rope Triceps Pushdown",
+    "Triceps",
+    "Cable Machine",
+  ),
+  builtInExercise("leg-press", "Leg Press", "Quadriceps", "Machine"),
+  builtInExercise(
+    "smith-machine-squat",
+    "Smith Machine Squat",
+    "Quadriceps",
+    "Smith Machine",
+  ),
+  builtInExercise(
+    "romanian-deadlift",
+    "Romanian Deadlift",
+    "Hamstrings",
+    "Dumbbells",
+  ),
+  builtInExercise("leg-extension", "Leg Extension", "Quadriceps", "Machine"),
+  builtInExercise(
+    "seated-leg-curl",
+    "Seated Leg Curl",
+    "Hamstrings",
+    "Machine",
+  ),
+  builtInExercise("hip-thrust", "Hip Thrust", "Glutes", "Smith Machine"),
+  builtInExercise("glute-bridge", "Glute Bridge", "Glutes", "Bodyweight"),
+  builtInExercise(
+    "bulgarian-split-squat",
+    "Bulgarian Split Squat",
+    "Quadriceps",
+    "Dumbbells",
+  ),
+  builtInExercise(
+    "reverse-lunge",
+    "Reverse Lunge",
+    "Quadriceps",
+    "Dumbbells",
+  ),
+  builtInExercise(
+    "walking-lunge",
+    "Walking Lunge",
+    "Quadriceps",
+    "Dumbbells",
+  ),
+  builtInExercise("step-up", "Step-Up", "Quadriceps", "Dumbbells"),
+  builtInExercise("hip-abduction", "Hip Abduction", "Glutes", "Machine"),
+  builtInExercise("calf-raise", "Calf Raise", "Calves", "Machine"),
+  builtInExercise("cable-crunch", "Cable Crunch", "Core", "Cable Machine"),
+  builtInExercise("knee-raise", "Knee Raise", "Core", "Bodyweight", "reps"),
+  builtInExercise("plank", "Plank", "Core", "Bodyweight", "duration"),
+] satisfies ExerciseDefinition[];
 
-export const builtInExercises: Record<string, ExerciseDefinition> =
-  Object.fromEntries(catalog.map((item) => [item.id, item]));
+export const builtInExercises: Readonly<Record<string, ExerciseDefinition>> =
+  Object.fromEntries(catalog.map((exercise) => [exercise.id, exercise]));

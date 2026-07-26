@@ -20,12 +20,14 @@ function NumberInput({
   value,
   disabled,
   step,
+  inputMode = "numeric",
   onChange,
 }: {
   label: string;
   value?: number;
   disabled?: boolean;
   step?: number;
+  inputMode?: "numeric" | "decimal";
   onChange(value?: number): void;
 }) {
   return (
@@ -33,7 +35,7 @@ function NumberInput({
       <span>{label}</span>
       <input
         disabled={disabled}
-        inputMode="decimal"
+        inputMode={inputMode}
         min="0"
         step={step}
         type="number"
@@ -206,64 +208,6 @@ function DurationLogger(props: ExerciseLoggerProps) {
   );
 }
 
-function CardioLogger(props: ExerciseLoggerProps) {
-  return (
-    <SetContainer
-      {...props}
-      isValid={(set) => set.actualDurationSeconds !== undefined}
-    >
-      {(set, inputsDisabled) => (
-        <>
-          <NumberInput
-            label="Duration (seconds)"
-            value={set.actualDurationSeconds}
-            disabled={inputsDisabled}
-            onChange={(actualDurationSeconds) =>
-              props.onUpdateSet(set.setNumber, { actualDurationSeconds })
-            }
-          />
-          <NumberInput
-            label="Distance (optional)"
-            value={set.actualDistance}
-            disabled={inputsDisabled}
-            step={0.01}
-            onChange={(actualDistance) =>
-              props.onUpdateSet(set.setNumber, { actualDistance })
-            }
-          />
-          <NumberInput
-            label="Speed (optional)"
-            value={set.actualSpeed}
-            disabled={inputsDisabled}
-            step={0.1}
-            onChange={(actualSpeed) =>
-              props.onUpdateSet(set.setNumber, { actualSpeed })
-            }
-          />
-          <NumberInput
-            label="Incline % (optional)"
-            value={set.actualIncline}
-            disabled={inputsDisabled}
-            step={0.5}
-            onChange={(actualIncline) =>
-              props.onUpdateSet(set.setNumber, { actualIncline })
-            }
-          />
-          <NumberInput
-            label="Resistance (optional)"
-            value={set.actualResistance}
-            disabled={inputsDisabled}
-            step={0.5}
-            onChange={(actualResistance) =>
-              props.onUpdateSet(set.setNumber, { actualResistance })
-            }
-          />
-        </>
-      )}
-    </SetContainer>
-  );
-}
-
 const loggerByTrackingType: Record<
   TrackingType,
   React.ComponentType<ExerciseLoggerProps>
@@ -271,7 +215,6 @@ const loggerByTrackingType: Record<
   weight_reps: WeightRepsLogger,
   reps: RepsLogger,
   duration: DurationLogger,
-  cardio: CardioLogger,
 };
 
 export function ExerciseLogger(props: ExerciseLoggerProps) {

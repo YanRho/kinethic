@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 import { Profile, initials } from "@/lib/kinethic/domain";
-import { BackButton } from "./back-button";
+import { BackButton, HomeButton } from "./back-button";
 
 export function Brand() {
   return (
@@ -51,11 +51,17 @@ export function PageShell({
       <div className="mx-auto max-w-5xl">
         <header className="flex min-h-12 items-center justify-between gap-3">
           {backHref ? (
-            <BackButton
-              fallbackHref={backHref}
-              confirmMessage={backConfirmMessage}
-              onBeforeBack={onBeforeBack}
-            />
+            <div className="flex items-center gap-2">
+              <BackButton
+                fallbackHref={backHref}
+                confirmMessage={backConfirmMessage}
+                onBeforeBack={onBeforeBack}
+              />
+              <HomeButton
+                confirmMessage={backConfirmMessage}
+                onBeforeHome={onBeforeBack}
+              />
+            </div>
           ) : (
             <Brand />
           )}
