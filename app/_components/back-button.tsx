@@ -65,9 +65,11 @@ export function BackButton({
 }
 
 export function HomeButton({
+  href = "/",
   confirmMessage,
   onBeforeHome,
 }: {
+  href?: string;
   confirmMessage?: string;
   onBeforeHome?: () => void;
 }) {
@@ -79,7 +81,7 @@ export function HomeButton({
     }
 
     onBeforeHome?.();
-    router.replace("/");
+    router.replace(href);
   };
 
   return (
