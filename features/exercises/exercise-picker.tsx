@@ -364,13 +364,8 @@ export function ExercisePicker({
 
       {creatingCustom && (
         <div className="fixed inset-0 z-30 grid place-items-center bg-black/75 p-4">
-<<<<<<< HEAD
-          <div className="panel w-full max-w-md p-5">
-            <h2 className="text-xl font-semibold">Create Exercise</h2>
-=======
           <div className="panel max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto p-5">
             <h2 className="text-xl font-semibold">Create Custom Exercise</h2>
->>>>>>> dev
             <label className="field mt-5">
               <span>Name</span>
               <input
@@ -378,16 +373,6 @@ export function ExercisePicker({
                 onChange={(event) => setCustomName(event.target.value)}
               />
             </label>
-<<<<<<< HEAD
-            <label className="field mt-4">
-              <span>Muscle group</span>
-              <input
-                value={customMuscle}
-                onChange={(event) => setCustomMuscle(event.target.value)}
-                placeholder="Other"
-              />
-            </label>
-=======
             <fieldset className="mt-4">
               <legend className="text-sm font-medium text-slate-300">
                 Muscle groups
@@ -414,7 +399,6 @@ export function ExercisePicker({
                 })}
               </div>
             </fieldset>
->>>>>>> dev
             <label className="field mt-4">
               <span>Equipment</span>
               <select
