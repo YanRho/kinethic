@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { House } from "lucide-react";
 import {
   Brand,
   EmptyState,
@@ -32,10 +33,6 @@ function workoutExerciseText(
 ) {
   if (trackingType === "duration") {
     return `${item.sets} sets · ${item.durationSeconds ?? 0}s · ${item.restSeconds}s rest`;
-  }
-
-  if (trackingType === "cardio") {
-    return `${Math.round((item.durationSeconds ?? 0) / 60)} min cardio`;
   }
 
   return `${item.sets} sets · ${repText(item.reps)} · ${item.restSeconds}s rest${trackingType === "weight_reps" && item.weight !== undefined ? ` · ${item.weight} ${item.weightUnit ?? "lb"}` : ""}`;
@@ -103,8 +100,9 @@ export function TodayScreen({ profileId }: { profileId: string }) {
           <Link href="/">
             <Brand />
           </Link>
-          <Link className="muted-button" href="/">
-            Switch profile
+          <Link className="muted-button gap-2" href="/" replace>
+            <House aria-hidden="true" className="h-4 w-4" />
+            Home
           </Link>
         </header>
         <section className="pt-10">

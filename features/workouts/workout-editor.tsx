@@ -152,11 +152,7 @@ export function WorkoutEditor({
           ? previousTrackingType === "duration"
             ? item.durationSeconds
             : 60
-          : trackingType === "cardio"
-            ? previousTrackingType === "cardio"
-              ? item.durationSeconds
-              : 1200
-            : item.durationSeconds,
+          : item.durationSeconds,
     });
   };
   const reorderExercise = (sourceId: Id, targetId: Id) => {
@@ -195,7 +191,7 @@ export function WorkoutEditor({
       name,
       exercises: items,
     });
-    router.push(`/profiles/${profileId}/workouts`);
+    router.replace(`/profiles/${profileId}/workouts`);
   };
   return (
     <PageShell
@@ -253,9 +249,7 @@ export function WorkoutEditor({
                   ? "Choose a tracking type"
                   : trackingType === "duration"
                     ? `${item.durationSeconds ?? 0}s`
-                    : trackingType === "cardio"
-                      ? `${Math.round((item.durationSeconds ?? 0) / 60)} min cardio`
-                      : reps.kind === "exact"
+                    : reps.kind === "exact"
                         ? `${reps.reps} reps`
                         : `${reps.min}–${reps.max} reps`;
               return (
@@ -379,7 +373,6 @@ export function WorkoutEditor({
                             <option value="weight_reps">Weight and reps</option>
                             <option value="reps">Reps only</option>
                             <option value="duration">Duration</option>
-                            <option value="cardio">Cardio</option>
                           </select>
                         </label>
                         {trackingType && (
@@ -388,6 +381,7 @@ export function WorkoutEditor({
                               <span>Sets</span>
                               <input
                                 type="number"
+                                inputMode="numeric"
                                 min="1"
                                 value={item.sets}
                                 onChange={(e) =>
@@ -426,8 +420,9 @@ export function WorkoutEditor({
                                     <span>Reps</span>
                                     <input
                                       type="number"
+                                      inputMode="numeric"
                                       min="1"
-                                      value={reps.reps}
+                                      value={reps.reps || ""}
                                       onChange={(event) =>
                                         update(index, {
                                           reps: {
@@ -436,6 +431,13 @@ export function WorkoutEditor({
                                           },
                                         })
                                       }
+                                      onBlur={() => {
+                                        if (reps.reps < 1) {
+                                          update(index, {
+                                            reps: { kind: "exact", reps: 1 },
+                                          });
+                                        }
+                                      }}
                                     />
                                   </label>
                                 ) : (
@@ -444,8 +446,9 @@ export function WorkoutEditor({
                                       <span>Min reps</span>
                                       <input
                                         type="number"
+                                        inputMode="numeric"
                                         min="1"
-                                        value={reps.min}
+                                        value={reps.min || ""}
                                         onChange={(event) =>
                                           update(index, {
                                             reps: {
@@ -454,14 +457,25 @@ export function WorkoutEditor({
                                             } as RepTarget,
                                           })
                                         }
+                                        onBlur={() => {
+                                          if (reps.min < 1) {
+                                            update(index, {
+                                              reps: {
+                                                ...reps,
+                                                min: 1,
+                                              } as RepTarget,
+                                            });
+                                          }
+                                        }}
                                       />
                                     </label>
                                     <label className="field">
                                       <span>Max reps</span>
                                       <input
                                         type="number"
+                                        inputMode="numeric"
                                         min="1"
-                                        value={reps.max}
+                                        value={reps.max || ""}
                                         onChange={(event) =>
                                           update(index, {
                                             reps: {
@@ -470,6 +484,16 @@ export function WorkoutEditor({
                                             } as RepTarget,
                                           })
                                         }
+                                        onBlur={() => {
+                                          if (reps.max < 1) {
+                                            update(index, {
+                                              reps: {
+                                                ...reps,
+                                                max: 1,
+                                              } as RepTarget,
+                                            });
+                                          }
+                                        }}
                                       />
                                     </label>
                                   </>
@@ -480,6 +504,7 @@ export function WorkoutEditor({
                               <span>Rest (seconds)</span>
                               <input
                                 type="number"
+                                inputMode="numeric"
                                 min="0"
                                 step="15"
                                 value={item.restSeconds}
@@ -499,6 +524,7 @@ export function WorkoutEditor({
                                   <span>Weight (optional)</span>
                                   <input
                                     type="number"
+                                    inputMode="decimal"
                                     min="0"
                                     step="0.5"
                                     value={item.weight ?? ""}
@@ -529,12 +555,12 @@ export function WorkoutEditor({
                                 </label>
                               </>
                             )}
-                            {(trackingType === "duration" ||
-                              trackingType === "cardio") && (
+                            {trackingType === "duration" && (
                               <label className="field">
                                 <span>Target duration (seconds)</span>
                                 <input
                                   type="number"
+                                  inputMode="numeric"
                                   min="1"
                                   value={item.durationSeconds ?? ""}
                                   onChange={(event) =>
@@ -546,35 +572,6 @@ export function WorkoutEditor({
                                   }
                                 />
                               </label>
-                            )}
-                            {trackingType === "cardio" && (
-                              <>
-                                {(
-                                  [
-                                    ["distance", "Distance (optional)"],
-                                    ["speed", "Speed (optional)"],
-                                    ["incline", "Incline % (optional)"],
-                                    ["resistance", "Resistance (optional)"],
-                                  ] as const
-                                ).map(([field, label]) => (
-                                  <label className="field" key={field}>
-                                    <span>{label}</span>
-                                    <input
-                                      type="number"
-                                      min="0"
-                                      step="0.1"
-                                      value={item[field] ?? ""}
-                                      onChange={(event) =>
-                                        update(index, {
-                                          [field]: event.target.value
-                                            ? Number(event.target.value)
-                                            : undefined,
-                                        })
-                                      }
-                                    />
-                                  </label>
-                                ))}
-                              </>
                             )}
                           </>
                         )}

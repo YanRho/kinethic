@@ -31,7 +31,7 @@ export function ProfileHome() {
       return;
     }
     const profile = repository.createProfile({ name, accent });
-    router.push(`/profiles/${profile.id}/splits/new`);
+    router.replace(`/profiles/${profile.id}/splits/new`);
   };
   return (
     <main className="min-h-dvh bg-[#080b12] px-5 py-6 text-white">

@@ -1,7 +1,15 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ExerciseDefinition, Id } from "@/lib/kinethic/domain";
+import { ListFilter } from "lucide-react";
+import {
+  Equipment,
+  ExerciseDefinition,
+  Id,
+  MuscleGroup,
+  equipmentOptions,
+  muscleGroupOptions,
+} from "@/lib/kinethic/domain";
 import { useKinEthicData } from "@/lib/kinethic/hooks";
 import { repository } from "@/lib/kinethic/repository";
 
@@ -64,8 +72,7 @@ function ExerciseSection({
                     {exercise.name}
                   </span>
                   <span className="mt-1 block truncate text-xs text-slate-400">
-                    {exercise.muscleGroups[0] ?? "Other"} ·{" "}
-                    {exercise.equipment[0] ?? "Other"}
+                    {exercise.muscleGroups.join(", ")} · {exercise.equipment}
                   </span>
                 </span>
               </button>
@@ -79,7 +86,7 @@ function ExerciseSection({
               >
                 {favorite ? "★" : "☆"}
               </button>
-              {exercise.isCustom && (
+              {exercise.source === "custom" && (
                 <button
                   type="button"
                   aria-label={`Delete ${exercise.name}`}
@@ -105,13 +112,17 @@ export function ExercisePicker({
 }: ExercisePickerProps) {
   const data = useKinEthicData();
   const [query, setQuery] = useState("");
-  const [muscleFilter, setMuscleFilter] = useState("All");
-  const [equipmentFilter, setEquipmentFilter] = useState("All");
+  const [muscleFilter, setMuscleFilter] =
+    useState<"All" | MuscleGroup>("All");
+  const [equipmentFilter, setEquipmentFilter] =
+    useState<"All" | Equipment>("All");
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Id[]>([]);
   const [creatingCustom, setCreatingCustom] = useState(false);
   const [customName, setCustomName] = useState("");
-  const [customMuscle, setCustomMuscle] = useState("");
-  const [customEquipment, setCustomEquipment] = useState("");
+  const [customMuscles, setCustomMuscles] = useState<MuscleGroup[]>([]);
+  const [customEquipment, setCustomEquipment] =
+    useState<Equipment>(equipmentOptions[0]);
   const exercises = useMemo(
     () =>
       Object.values(data.exercises)
@@ -122,20 +133,8 @@ export function ExercisePicker({
     favoriteExerciseIds: [],
     recentExerciseIds: [],
   };
-  const muscleGroups = useMemo(
-    () => [
-      "All",
-      ...new Set(exercises.flatMap((exercise) => exercise.muscleGroups)),
-    ],
-    [exercises],
-  );
-  const equipmentTypes = useMemo(
-    () => [
-      "All",
-      ...new Set(exercises.flatMap((exercise) => exercise.equipment)),
-    ],
-    [exercises],
-  );
+  const muscleGroups = ["All", ...muscleGroupOptions] as const;
+  const equipmentTypes = ["All", ...equipmentOptions] as const;
   const filteredExercises = exercises.filter((exercise) => {
     const matchesQuery = exercise.name
       .toLocaleLowerCase()
@@ -143,7 +142,7 @@ export function ExercisePicker({
     const matchesMuscle =
       muscleFilter === "All" || exercise.muscleGroups.includes(muscleFilter);
     const matchesEquipment =
-      equipmentFilter === "All" || exercise.equipment.includes(equipmentFilter);
+      equipmentFilter === "All" || exercise.equipment === equipmentFilter;
 
     return matchesQuery && matchesMuscle && matchesEquipment;
   });
@@ -197,6 +196,13 @@ export function ExercisePicker({
     repository.deleteExercise(exercise.id);
     onDelete?.(exercise.id);
   };
+  const toggleCustomMuscle = (muscleGroup: MuscleGroup) => {
+    setCustomMuscles((current) =>
+      current.includes(muscleGroup)
+        ? current.filter((item) => item !== muscleGroup)
+        : [...current, muscleGroup],
+    );
+  };
   const createCustomExercise = () => {
     if (!customName.trim()) {
       return;
@@ -205,8 +211,8 @@ export function ExercisePicker({
     const exercise = repository.saveExercise(
       customName,
       "weight_reps",
-      customMuscle.trim() || "Other",
-      customEquipment.trim() || "Other",
+      customMuscles,
+      customEquipment,
     );
 
     setSelectedIds((current) =>
@@ -214,8 +220,8 @@ export function ExercisePicker({
     );
     setCreatingCustom(false);
     setCustomName("");
-    setCustomMuscle("");
-    setCustomEquipment("");
+    setCustomMuscles([]);
+    setCustomEquipment(equipmentOptions[0]);
   };
   const sectionProps = {
     selectedIds,
@@ -260,44 +266,65 @@ export function ExercisePicker({
         </button>
 
         <div className="mt-5">
-          <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-            Muscle group
-          </p>
-          <div className="mt-2 flex gap-2 overflow-x-auto pb-2">
-            {muscleGroups.map((muscle) => (
-              <button
-                type="button"
-                className={
-                  muscleFilter === muscle
-                    ? "primary-button w-auto whitespace-nowrap"
-                    : "muted-button whitespace-nowrap"
-                }
-                key={muscle}
-                onClick={() => setMuscleFilter(muscle)}
-              >
-                {muscle}
-              </button>
-            ))}
-          </div>
-          <p className="mt-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
-            Equipment
-          </p>
-          <div className="mt-2 flex gap-2 overflow-x-auto pb-2">
-            {equipmentTypes.map((equipment) => (
-              <button
-                type="button"
-                className={
-                  equipmentFilter === equipment
-                    ? "primary-button w-auto whitespace-nowrap"
-                    : "muted-button whitespace-nowrap"
-                }
-                key={equipment}
-                onClick={() => setEquipmentFilter(equipment)}
-              >
-                {equipment}
-              </button>
-            ))}
-          </div>
+          <button
+            type="button"
+            className="muted-button w-auto gap-2"
+            aria-expanded={filtersOpen}
+            aria-controls="exercise-filters"
+            onClick={() => setFiltersOpen((open) => !open)}
+          >
+            <ListFilter aria-hidden="true" className="h-5 w-5" />
+            Filters
+            {(muscleFilter !== "All" || equipmentFilter !== "All") && (
+              <span className="theme-accent-text text-xs">Active</span>
+            )}
+          </button>
+          {filtersOpen && (
+            <div id="exercise-filters" className="panel mt-3 grid gap-3 p-4 sm:grid-cols-2">
+              <label className="field">
+                <span>Muscle group</span>
+                <select
+                  value={muscleFilter}
+                  onChange={(event) =>
+                    setMuscleFilter(event.target.value as "All" | MuscleGroup)
+                  }
+                >
+                  {muscleGroups.map((muscle) => (
+                    <option key={muscle} value={muscle}>
+                      {muscle}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="field">
+                <span>Equipment</span>
+                <select
+                  value={equipmentFilter}
+                  onChange={(event) =>
+                    setEquipmentFilter(event.target.value as "All" | Equipment)
+                  }
+                >
+                  {equipmentTypes.map((equipment) => (
+                    <option key={equipment} value={equipment}>
+                      {equipment}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {(muscleFilter !== "All" || equipmentFilter !== "All") && (
+                <button
+                  type="button"
+                  className="muted-button sm:col-span-2"
+                  onClick={() => {
+                    setMuscleFilter("All");
+                    setEquipmentFilter("All");
+                  }}
+                >
+                  Clear filters
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         <ExerciseSection
@@ -337,8 +364,13 @@ export function ExercisePicker({
 
       {creatingCustom && (
         <div className="fixed inset-0 z-30 grid place-items-center bg-black/75 p-4">
+<<<<<<< HEAD
           <div className="panel w-full max-w-md p-5">
             <h2 className="text-xl font-semibold">Create Exercise</h2>
+=======
+          <div className="panel max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto p-5">
+            <h2 className="text-xl font-semibold">Create Custom Exercise</h2>
+>>>>>>> dev
             <label className="field mt-5">
               <span>Name</span>
               <input
@@ -346,6 +378,7 @@ export function ExercisePicker({
                 onChange={(event) => setCustomName(event.target.value)}
               />
             </label>
+<<<<<<< HEAD
             <label className="field mt-4">
               <span>Muscle group</span>
               <input
@@ -354,13 +387,48 @@ export function ExercisePicker({
                 placeholder="Other"
               />
             </label>
+=======
+            <fieldset className="mt-4">
+              <legend className="text-sm font-medium text-slate-300">
+                Muscle groups
+              </legend>
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                {muscleGroupOptions.map((muscleGroup) => {
+                  const selected = customMuscles.includes(muscleGroup);
+
+                  return (
+                    <button
+                      type="button"
+                      key={muscleGroup}
+                      aria-pressed={selected}
+                      className={
+                        selected
+                          ? "theme-accent-surface min-h-11 rounded-xl border px-3 py-2 text-sm font-semibold"
+                          : "min-h-11 rounded-xl border border-(--profile-border) px-3 py-2 text-sm text-slate-300"
+                      }
+                      onClick={() => toggleCustomMuscle(muscleGroup)}
+                    >
+                      {muscleGroup}
+                    </button>
+                  );
+                })}
+              </div>
+            </fieldset>
+>>>>>>> dev
             <label className="field mt-4">
               <span>Equipment</span>
-              <input
+              <select
                 value={customEquipment}
-                onChange={(event) => setCustomEquipment(event.target.value)}
-                placeholder="Other"
-              />
+                onChange={(event) =>
+                  setCustomEquipment(event.target.value as Equipment)
+                }
+              >
+                {equipmentOptions.map((equipment) => (
+                  <option key={equipment} value={equipment}>
+                    {equipment}
+                  </option>
+                ))}
+              </select>
             </label>
             <div className="mt-5 grid grid-cols-2 gap-3">
               <button
@@ -373,7 +441,7 @@ export function ExercisePicker({
               <button
                 type="button"
                 className="primary-button"
-                disabled={!customName.trim()}
+                disabled={!customName.trim() || customMuscles.length === 0}
                 onClick={createCustomExercise}
               >
                 Create

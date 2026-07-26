@@ -118,83 +118,10 @@ const durationStrategy: ProgressionStrategy = {
   },
 };
 
-const cardioStrategy: ProgressionStrategy = {
-  recommend(exercise) {
-    const performance = exercise.sets[0];
-
-    if (!performance?.actualDurationSeconds) {
-      return null;
-    }
-
-    if (
-      exercise.plannedSpeed !== undefined &&
-      performance.actualSpeed !== undefined &&
-      performance.actualSpeed >= exercise.plannedSpeed
-    ) {
-      return {
-        kind: "increase",
-        message:
-          "You met the planned speed. Increase speed or incline slightly next time.",
-      };
-    }
-
-    if (
-      exercise.plannedIncline !== undefined &&
-      performance.actualIncline !== undefined &&
-      performance.actualIncline >= exercise.plannedIncline
-    ) {
-      return {
-        kind: "increase",
-        message:
-          "You met the planned incline. Increase incline, speed, or duration next time.",
-      };
-    }
-
-    if (
-      performance.actualDurationSeconds >= (exercise.targetDurationSeconds ?? 0)
-    ) {
-      return {
-        kind: "increase",
-        message:
-          "You completed the planned duration. Increase duration, speed, or incline next time.",
-      };
-    }
-
-    return {
-      kind: "improve",
-      message:
-        "Repeat the current cardio targets and build toward the planned duration.",
-    };
-  },
-  formatPerformance(exercise) {
-    const set = exercise.sets[0];
-    const details = [`${set?.actualDurationSeconds ?? "–"}s`];
-
-    if (set?.actualDistance !== undefined) {
-      details.push(`${set.actualDistance} distance`);
-    }
-
-    if (set?.actualSpeed !== undefined) {
-      details.push(`${set.actualSpeed} speed`);
-    }
-
-    if (set?.actualIncline !== undefined) {
-      details.push(`${set.actualIncline}% incline`);
-    }
-
-    if (set?.actualResistance !== undefined) {
-      details.push(`${set.actualResistance} resistance`);
-    }
-
-    return details.join(" · ");
-  },
-};
-
 const strategies: Record<TrackingType, ProgressionStrategy> = {
   weight_reps: weightRepsStrategy,
   reps: repsStrategy,
   duration: durationStrategy,
-  cardio: cardioStrategy,
 };
 
 export function getPreviousExercise(
