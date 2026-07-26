@@ -102,7 +102,7 @@ export function TodayScreen({ profileId }: { profileId: string }) {
           </Link>
           <Link className="muted-button gap-2" href="/" replace>
             <House aria-hidden="true" className="h-4 w-4" />
-            Home
+            Switch profile
           </Link>
         </header>
         <section className="pt-10">
