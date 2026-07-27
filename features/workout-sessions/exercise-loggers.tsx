@@ -78,7 +78,7 @@ function SetContainer({
             className={`rounded-2xl border p-3 ${isNext ? "theme-accent-surface" : "border-white/10 bg-black/15"}`}
             key={set.setNumber}
           >
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="font-semibold">Set {set.setNumber}</p>
               {isComplete ? (
                 <div className="flex items-center gap-2">

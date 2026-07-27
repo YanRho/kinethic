@@ -2,13 +2,13 @@
 
 import {
   FormEvent,
-  useId,
+  useEffect,
   useLayoutEffect,
   useRef,
   useState,
 } from "react";
 import { useRouter } from "next/navigation";
-import { SlidersHorizontal } from "lucide-react";
+import { GripVertical, SlidersHorizontal, X } from "lucide-react";
 import {
   PageShell,
   EmptyState,
@@ -54,6 +54,26 @@ const workoutNamePlaceholders = [
   "Weekend Warrior",
   "Morning Momentum",
 ];
+let lastWorkoutNamePlaceholderIndex = -1;
+
+const randomWorkoutNamePlaceholder = () => {
+  const availableCount =
+    lastWorkoutNamePlaceholderIndex < 0
+      ? workoutNamePlaceholders.length
+      : workoutNamePlaceholders.length - 1;
+  let index =
+    crypto.getRandomValues(new Uint32Array(1))[0] % availableCount;
+
+  if (
+    lastWorkoutNamePlaceholderIndex >= 0 &&
+    index >= lastWorkoutNamePlaceholderIndex
+  ) {
+    index += 1;
+  }
+
+  lastWorkoutNamePlaceholderIndex = index;
+  return workoutNamePlaceholders[index];
+};
 
 export function WorkoutEditor({
   profileId,
@@ -67,13 +87,9 @@ export function WorkoutEditor({
   const profile = data.profiles[profileId];
   const existing = workoutId ? data.workouts[workoutId] : undefined;
   const [name, setName] = useState(existing?.name ?? "");
-  const placeholderSeed = useId();
-  const placeholderIndex = [...`${placeholderSeed}:${profileId}`].reduce(
-    (total, character) => total + character.charCodeAt(0),
-    0,
+  const [namePlaceholder, setNamePlaceholder] = useState(
+    workoutNamePlaceholders[0],
   );
-  const namePlaceholder =
-    workoutNamePlaceholders[placeholderIndex % workoutNamePlaceholders.length];
   const [items, setItems] = useState<WorkoutExercise[]>(
     existing?.exercises.map((item) => ({
       ...item,
@@ -93,6 +109,16 @@ export function WorkoutEditor({
   const cardAnimations = useRef(new Map<Id, Animation>());
   const previousCardPositions = useRef(new Map<Id, DOMRect>());
   const lastReorderTargetId = useRef<Id | null>(null);
+
+  useEffect(() => {
+    if (workoutId) return;
+
+    const frame = requestAnimationFrame(() => {
+      setNamePlaceholder(randomWorkoutNamePlaceholder());
+    });
+
+    return () => cancelAnimationFrame(frame);
+  }, [workoutId]);
 
   useLayoutEffect(() => {
     const nextPositions = new Map<Id, DOMRect>();
@@ -250,8 +276,8 @@ export function WorkoutEditor({
           </Surface>
         </aside>
         <div>
-          <div className="mt-8 flex items-center justify-between lg:mt-0">
-            <div>
+          <div className="mt-8 flex items-center justify-between gap-3 lg:mt-0">
+            <div className="min-w-0">
               <p className="eyebrow">Exercises</p>
               <h1 className="mt-1 text-xl font-semibold">Training order</h1>
             </div>
@@ -321,7 +347,7 @@ export function WorkoutEditor({
                       setOpenExerciseId(nextOpen ? item.id : null)
                     }
                   >
-                  <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start gap-1 sm:gap-2">
                     <ActionButton
                       tone="ghost"
                       type="button"
@@ -348,25 +374,25 @@ export function WorkoutEditor({
                         setDraggedExerciseId(item.id);
                       }}
                       onDragEnd={finishDragging}
-                      className="theme-accent-text ml-2 mt-4 flex min-h-11 w-10 cursor-grab touch-none items-center justify-center rounded-xl text-xl active:cursor-grabbing"
+                      className="theme-accent-text ml-1 mt-4 flex min-h-11 w-9 cursor-grab touch-none items-center justify-center rounded-xl sm:ml-2 sm:w-10 active:cursor-grabbing"
                     >
-                      ☰
+                      <GripVertical aria-hidden="true" />
                     </ActionButton>
                     <PopoverTrigger asChild>
                       <ActionButton
                         tone="ghost"
                         type="button"
                         aria-expanded={open}
-                        className="flex min-h-20 flex-1 items-center justify-between gap-4 p-4 text-left"
+                        className="min-w-0 flex min-h-20 flex-1 items-center justify-between gap-2 px-2 py-4 text-left sm:gap-4 sm:p-4"
                       >
-                      <span>
+                      <span className="min-w-0">
                         <span className="block text-xs text-slate-500">
                           Exercise {index + 1}
                         </span>
-                        <span className="mt-1 block font-semibold">
+                        <span className="mt-1 block truncate font-semibold">
                           {exercise?.name ?? "Unavailable exercise"}
                         </span>
-                        <span className="mt-1 block text-xs text-slate-400">
+                        <span className="mt-1 block break-words text-xs text-slate-400">
                           {item.sets} sets · {repSummary} · {item.restSeconds}s
                           rest
                           {item.weight !== undefined
@@ -384,9 +410,12 @@ export function WorkoutEditor({
                       tone="ghost"
                       type="button"
                       onClick={() => removeExercise(item.id)}
-                      className="mr-4 mt-4 min-h-11 text-sm text-red-200"
+                      size="icon-lg"
+                      aria-label={`Remove ${exercise?.name ?? "exercise"}`}
+                      title="Remove exercise"
+                      className="mr-1 mt-4 rounded-xl text-red-200 sm:mr-4"
                     >
-                      Remove
+                      <X aria-hidden="true" />
                     </ActionButton>
                   </div>
                   <PopoverContent
@@ -659,7 +688,7 @@ export function WorkoutEditor({
             })}
           </div>
         </div>
-        <div className="fixed inset-x-0 bottom-0 border-t border-white/10 bg-[#080b12]/95 p-4 backdrop-blur">
+        <div className="safe-bottom fixed inset-x-0 bottom-0 z-30 border-t border-white/10 bg-[#080b12]/95 px-3 pt-3 backdrop-blur sm:px-4">
           <div className="mx-auto max-w-5xl lg:flex lg:justify-end">
             <ActionButton
               tone="primary"

@@ -202,7 +202,7 @@ export function TodayScreen({ profileId }: { profileId: string }) {
   };
   return (
     <main
-      className="profile-theme min-h-dvh bg-[#080b12] px-4 py-5 text-white"
+      className="profile-theme safe-page min-h-dvh overflow-x-hidden bg-[#080b12] px-3 text-white sm:px-4"
       style={getProfileThemeStyle(profile.accent)}
     >
       <div className="mx-auto max-w-md">
@@ -246,7 +246,7 @@ export function TodayScreen({ profileId }: { profileId: string }) {
           </DropdownMenu>
         </header>
         <section className="pt-10">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3 sm:gap-4">
             <ProfileBadge profile={profile} size="sm" />
             <div className="min-w-0 flex-1">
               <p className="text-sm text-slate-400">Welcome back,</p>
@@ -330,7 +330,9 @@ export function TodayScreen({ profileId }: { profileId: string }) {
             {experience.kind === "workout" && workout ? (
               <>
                 <p className="eyebrow">Scheduled today · {split?.name}</p>
-                <h2 className="mt-4 text-3xl font-semibold">{workout.name}</h2>
+                <h2 className="mt-4 break-words text-2xl font-semibold sm:text-3xl">
+                  {workout.name}
+                </h2>
                 <p className="mt-2 text-sm text-slate-400">
                   {workout.exercises.length}{" "}
                   {workout.exercises.length === 1 ? "exercise" : "exercises"}
@@ -391,7 +393,9 @@ export function TodayScreen({ profileId }: { profileId: string }) {
                 <p className="eyebrow text-slate-400">
                   Recovery · {split?.name}
                 </p>
-                <h2 className="mt-4 text-3xl font-semibold">Rest day</h2>
+                <h2 className="mt-4 text-2xl font-semibold sm:text-3xl">
+                  Rest day
+                </h2>
                 <p className="mt-3 leading-7 text-slate-400">
                   No workout is assigned today. Rest, recover, or move however
                   feels good.
@@ -400,7 +404,7 @@ export function TodayScreen({ profileId }: { profileId: string }) {
             ) : (
               <>
                 <p className="eyebrow">Setup needed</p>
-                <h2 className="mt-4 text-3xl font-semibold">
+                <h2 className="mt-4 text-2xl font-semibold sm:text-3xl">
                   {experience.kind === "no-active-split"
                     ? "Choose an active split"
                     : experience.kind === "invalid-split"
@@ -422,10 +426,12 @@ export function TodayScreen({ profileId }: { profileId: string }) {
           </Surface>
           {split && (
             <section className="mt-9">
-              <div className="flex items-end justify-between">
-                <div>
+              <div className="flex items-end justify-between gap-3">
+                <div className="min-w-0">
                   <p className="text-sm text-slate-400">This week</p>
-                  <h2 className="mt-1 text-xl font-semibold">{split.name}</h2>
+                  <h2 className="mt-1 truncate text-xl font-semibold">
+                    {split.name}
+                  </h2>
                 </div>
                 <Link
                   className="theme-accent-text text-sm font-semibold"
@@ -442,13 +448,13 @@ export function TodayScreen({ profileId }: { profileId: string }) {
                   return (
                     <div
                       key={day}
-                      className={`flex min-h-14 items-center justify-between rounded-2xl border px-4 ${day === today ? "theme-accent-surface" : "border-white/10 bg-white/2.5"}`}
+                      className={`flex min-h-14 items-center justify-between gap-3 rounded-2xl border px-3 sm:px-4 ${day === today ? "theme-accent-surface" : "border-white/10 bg-white/2.5"}`}
                     >
                       <span className="text-sm font-medium">
                         {dayLabel(day)}
                       </span>
                       <span
-                        className={`text-sm ${assigned ? "text-slate-300" : "text-slate-600"}`}
+                        className={`min-w-0 truncate text-right text-sm ${assigned ? "text-slate-300" : "text-slate-600"}`}
                       >
                         {assigned?.name ?? "Rest"}
                       </span>
@@ -458,7 +464,7 @@ export function TodayScreen({ profileId }: { profileId: string }) {
               </div>
             </section>
           )}
-          <nav className="mt-8 grid grid-cols-2 gap-3">
+          <nav className="mt-8 grid grid-cols-1 gap-2 min-[360px]:grid-cols-2 sm:gap-3">
             <ActionButton asChild>
               <Link href={`/profiles/${profileId}/splits`}>
                 Workout splits
@@ -536,7 +542,7 @@ export function TodayScreen({ profileId }: { profileId: string }) {
             <legend className="text-sm font-medium text-slate-300">
               Height
             </legend>
-            <div className="mt-2 grid grid-cols-2 gap-3">
+            <div className="mt-2 grid grid-cols-1 gap-3 min-[360px]:grid-cols-2">
               <label className="field">
                 <span className="sr-only">Height in feet</span>
                 <AppInput

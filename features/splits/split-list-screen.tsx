@@ -34,8 +34,8 @@ export function SplitListScreen({ profileId }: { profileId: string }) {
       title="Workout splits"
       profile={profile}
     >
-      <div className="flex items-end justify-between pt-7">
-        <div>
+      <div className="flex flex-wrap items-end justify-between gap-3 pt-7">
+        <div className="min-w-0">
           <p className="eyebrow">Training plans</p>
           <h1 className="mt-1 text-2xl font-semibold">Workout splits</h1>
         </div>
@@ -58,9 +58,9 @@ export function SplitListScreen({ profileId }: { profileId: string }) {
               className={`p-4 ${active ? "theme-accent-surface" : ""}`}
               key={split.id}
             >
-              <div className="flex items-start justify-between">
-                <div>
-                  <h2 className="font-semibold">{split.name}</h2>
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h2 className="truncate font-semibold">{split.name}</h2>
                   <p className="mt-1 text-sm text-slate-500">
                     {count} scheduled days
                   </p>
@@ -71,7 +71,7 @@ export function SplitListScreen({ profileId }: { profileId: string }) {
                   </StatusBadge>
                 )}
               </div>
-              <div className="mt-4 grid grid-cols-2 gap-2">
+              <div className="mt-4 grid grid-cols-1 gap-2 min-[360px]:grid-cols-2">
                 <ActionButton asChild>
                   <Link href={`/profiles/${profileId}/splits/${split.id}/edit`}>
                     Edit

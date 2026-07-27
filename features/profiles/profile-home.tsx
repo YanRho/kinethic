@@ -70,9 +70,9 @@ export function ProfileHome() {
     router.replace(`/profiles/${profile.id}/splits/new`);
   };
   return (
-    <main className="min-h-dvh bg-[#080b12] px-5 py-6 text-white">
-      <div className="mx-auto flex min-h-[calc(100dvh-3rem)] max-w-2xl flex-col">
-        <header className="pt-3 text-center text-2xl font-semibold">
+    <main className="safe-page min-h-dvh overflow-x-hidden bg-[#080b12] px-3 text-white sm:px-5">
+      <div className="mx-auto flex min-h-[calc(100dvh-3rem)] min-w-0 max-w-2xl flex-col">
+        <header className="font-heading pt-3 text-center text-2xl font-semibold tracking-tight">
           Kin<span className="text-cyan-300">Ethic</span>
         </header>
         <section className="flex flex-1 items-center py-10">
@@ -86,10 +86,10 @@ export function ProfileHome() {
             </div>
           ) : !showingCreator ? (
             <div className="w-full text-center">
-              <h1 className="text-3xl font-semibold">
+              <h1 className="text-2xl font-semibold sm:text-3xl">
                 Who&apos;s training today?
               </h1>
-              <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3">
+              <div className="mt-8 grid grid-cols-1 gap-3 min-[380px]:grid-cols-2 sm:grid-cols-3 sm:gap-4">
                 {profiles.map((profile) => (
                   <ActionButton
                     tone="ghost"
@@ -123,7 +123,7 @@ export function ProfileHome() {
           ) : (
             <form
               onSubmit={submit}
-              className="panel mx-auto w-full max-w-md p-6"
+              className="panel mx-auto w-full max-w-md p-4 sm:p-6"
             >
               <h1 className="text-2xl font-semibold">Create a local profile</h1>
               <p className="mt-2 text-sm leading-6 text-slate-400">

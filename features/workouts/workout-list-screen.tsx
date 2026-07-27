@@ -30,8 +30,8 @@ export function WorkoutListScreen({ profileId }: { profileId: string }) {
       title="Workout library"
       profile={profile}
     >
-      <div className="flex items-end justify-between pt-7">
-        <div>
+      <div className="flex flex-wrap items-end justify-between gap-3 pt-7">
+        <div className="min-w-0">
           <p className="eyebrow">Reusable</p>
           <h1 className="mt-1 text-2xl font-semibold">Workouts</h1>
         </div>
@@ -48,12 +48,12 @@ export function WorkoutListScreen({ profileId }: { profileId: string }) {
         )}
         {workouts.map((workout) => (
           <Surface className="p-4" key={workout.id}>
-            <h2 className="font-semibold">{workout.name}</h2>
+            <h2 className="break-words font-semibold">{workout.name}</h2>
             <p className="mt-1 text-sm text-slate-500">
               {workout.exercises.length}{" "}
               {workout.exercises.length === 1 ? "exercise" : "exercises"}
             </p>
-            <div className="mt-4 grid grid-cols-2 gap-2">
+            <div className="mt-4 grid grid-cols-1 gap-2 min-[360px]:grid-cols-2">
               <ActionButton asChild>
                 <Link
                   href={`/profiles/${profileId}/workouts/${workout.id}/edit`}

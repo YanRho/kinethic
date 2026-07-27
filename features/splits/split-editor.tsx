@@ -120,13 +120,13 @@ export function SplitEditor({
               : undefined;
             return (
               <Surface className="p-4" key={day}>
-                <div className="flex items-center justify-between gap-4">
-                  <div>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
                     <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
                       {dayLabel(day)}
                     </p>
                     <h2
-                      className={`mt-1 font-semibold ${workout ? "text-white" : "text-slate-400"}`}
+                      className={`mt-1 truncate font-semibold ${workout ? "text-white" : "text-slate-400"}`}
                     >
                       {workout?.name ?? "Rest day"}
                     </h2>
@@ -175,8 +175,8 @@ export function SplitEditor({
             );
           })}
         </div>
-        <div className="fixed inset-x-0 bottom-0 border-t border-white/10 bg-[#080b12]/95 p-4 backdrop-blur">
-          <div className="mx-auto grid max-w-md grid-cols-2 gap-3">
+        <div className="safe-bottom fixed inset-x-0 bottom-0 z-30 border-t border-white/10 bg-[#080b12]/95 px-3 pt-3 backdrop-blur sm:px-4">
+          <div className="mx-auto grid max-w-md grid-cols-1 gap-2 min-[360px]:grid-cols-2 sm:gap-3">
             <ActionButton
               disabled={!name.trim()}
               type="submit"

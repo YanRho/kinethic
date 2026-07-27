@@ -268,10 +268,10 @@ export function WorkoutSessionScreen({
       profile={profile}
     >
       <div className="mx-auto max-w-3xl pb-28 pt-7">
-        <div className="flex items-end justify-between gap-4">
-          <div>
+        <div className="flex flex-wrap items-end justify-between gap-3 sm:gap-4">
+          <div className="min-w-0 flex-1">
             <p className="eyebrow">Workout in progress</p>
-            <h1 className="mt-2 text-2xl font-semibold">
+            <h1 className="mt-2 break-words text-xl font-semibold sm:text-2xl">
               {session.workoutName}
             </h1>
           </div>
@@ -286,7 +286,9 @@ export function WorkoutSessionScreen({
         {sessionComplete ? (
           <Surface className="mt-8 p-6 text-center">
             <p className="eyebrow">All exercises complete</p>
-            <h2 className="mt-3 text-3xl font-semibold">Workout complete</h2>
+            <h2 className="mt-3 text-2xl font-semibold sm:text-3xl">
+              Workout complete
+            </h2>
             <p className="mt-3 text-sm leading-6 text-slate-400">
               Finish to save this session to local workout history.
             </p>
@@ -301,13 +303,13 @@ export function WorkoutSessionScreen({
         ) : (
           currentExercise && (
             <Surface className="mt-8 p-4 sm:p-6">
-              <div className="flex items-start justify-between gap-4">
-                <div>
+              <div className="flex items-start justify-between gap-3 sm:gap-4">
+                <div className="min-w-0">
                   <p className="text-xs text-slate-400">
                     Exercise {session.currentExerciseIndex + 1} of{" "}
                     {session.exercises.length}
                   </p>
-                  <h2 className="mt-2 text-2xl font-semibold">
+                  <h2 className="mt-2 break-words text-xl font-semibold sm:text-2xl">
                     {currentExercise.exerciseName}
                   </h2>
                   <p className="mt-2 text-sm text-slate-400">
@@ -378,13 +380,13 @@ export function WorkoutSessionScreen({
               Rest timer before the next set unlocks.
             </DialogDescription>
           </DialogHeader>
-            <p className="mt-6 font-mono text-6xl font-semibold tabular-nums">
+            <p className="mt-6 font-mono text-5xl font-semibold tabular-nums sm:text-6xl">
               {formatTimer(restSeconds)}
             </p>
             <p className="mt-3 text-sm text-slate-400">
               The next set will unlock when the timer ends.
             </p>
-            <div className="mt-7 grid grid-cols-2 gap-3">
+            <div className="mt-7 grid grid-cols-2 gap-2 sm:gap-3">
               <ActionButton onClick={() => adjustRest(-15)}>
                 −15s
               </ActionButton>
