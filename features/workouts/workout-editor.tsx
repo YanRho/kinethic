@@ -1,6 +1,12 @@
 "use client";
 
-import { FormEvent, useLayoutEffect, useRef, useState } from "react";
+import {
+  FormEvent,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { useRouter } from "next/navigation";
 import { SlidersHorizontal } from "lucide-react";
 import {
@@ -36,6 +42,19 @@ import {
   Surface,
 } from "@/components/kinethic-ui";
 
+const workoutNamePlaceholders = [
+  "Iron Forge",
+  "Strength Circuit",
+  "Power Hour",
+  "Upper Body Blitz",
+  "Leg Day Legends",
+  "Full Body Fuel",
+  "Push Day Power",
+  "Pull Day Progress",
+  "Weekend Warrior",
+  "Morning Momentum",
+];
+
 export function WorkoutEditor({
   profileId,
   workoutId,
@@ -48,6 +67,13 @@ export function WorkoutEditor({
   const profile = data.profiles[profileId];
   const existing = workoutId ? data.workouts[workoutId] : undefined;
   const [name, setName] = useState(existing?.name ?? "");
+  const placeholderSeed = useId();
+  const placeholderIndex = [...`${placeholderSeed}:${profileId}`].reduce(
+    (total, character) => total + character.charCodeAt(0),
+    0,
+  );
+  const namePlaceholder =
+    workoutNamePlaceholders[placeholderIndex % workoutNamePlaceholders.length];
   const [items, setItems] = useState<WorkoutExercise[]>(
     existing?.exercises.map((item) => ({
       ...item,
@@ -215,7 +241,7 @@ export function WorkoutEditor({
               autoFocus
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Iron Forge, Strength Circuit, Power Day…"
+              placeholder={namePlaceholder}
             />
           </label>
           <Surface className="mt-5 hidden p-4 text-sm leading-6 text-slate-400 lg:block">

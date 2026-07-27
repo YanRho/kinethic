@@ -11,6 +11,7 @@ export const weekdays = [
 export type DayKey = (typeof weekdays)[number];
 export type Id = string;
 export type TrackingType = "weight_reps" | "reps" | "duration";
+export type Gender = "woman" | "man" | "nonbinary" | "prefer_not_to_say";
 
 export const muscleGroupOptions = [
   "Chest",
@@ -45,6 +46,10 @@ export type Profile = {
   id: Id;
   name: string;
   accent: string;
+  age?: number;
+  gender?: Gender;
+  weightLb?: number;
+  heightIn?: number;
   activeSplitId: Id | null;
   createdAt: string;
   updatedAt: string;
@@ -140,7 +145,7 @@ export type ExercisePreferences = {
 };
 
 export type KinEthicData = {
-  schemaVersion: 14;
+  schemaVersion: 15;
   profiles: Record<Id, Profile>;
   splits: Record<Id, WorkoutSplit>;
   workouts: Record<Id, Workout>;
@@ -160,7 +165,7 @@ export const emptySchedule = (): WeeklySchedule => ({
 });
 
 export const emptyData = (): KinEthicData => ({
-  schemaVersion: 14,
+  schemaVersion: 15,
   profiles: {},
   splits: {},
   workouts: {},
