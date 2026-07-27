@@ -46,7 +46,8 @@ export interface KinEthicRepository {
   saveExercise(
     name: string,
     trackingType?: TrackingType,
-    muscleGroups?: MuscleGroup[],
+    primaryMuscleGroup?: MuscleGroup,
+    secondaryMuscleGroups?: MuscleGroup[],
     equipment?: Equipment,
   ): ExerciseDefinition;
   deleteExercise(exerciseId: Id): void;
@@ -145,7 +146,7 @@ function migrateLegacy(raw: string | null): KinEthicData {
 function sanitize(value: unknown): KinEthicData {
   if (
     !isRecord(value) ||
-    ![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13].includes(
+    ![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14].includes(
       Number(value.schemaVersion),
     )
   ) {
@@ -182,10 +183,14 @@ function sanitize(value: unknown): KinEthicData {
         isCustom?: boolean;
         muscleGroup?: string;
         muscleGroups?: string[];
+        primaryMuscleGroup?: string;
+        secondaryMuscleGroups?: string[];
         equipment?: string[] | string;
       };
-      const rawMuscleGroups = legacy.muscleGroups ??
-        (legacy.muscleGroup ? [legacy.muscleGroup] : []);
+      const rawMuscleGroups = legacy.primaryMuscleGroup
+        ? [legacy.primaryMuscleGroup, ...(legacy.secondaryMuscleGroups ?? [])]
+        : (legacy.muscleGroups ??
+          (legacy.muscleGroup ? [legacy.muscleGroup] : []));
       const rawEquipment = Array.isArray(legacy.equipment)
         ? legacy.equipment[0]
         : legacy.equipment;
@@ -221,7 +226,8 @@ function sanitize(value: unknown): KinEthicData {
         {
           id: legacy.id,
           name: legacy.name,
-          muscleGroups: muscleGroups.length > 0 ? muscleGroups : ["Core"],
+          primaryMuscleGroup: muscleGroups[0] ?? "Core",
+          secondaryMuscleGroups: muscleGroups.slice(1),
           equipment,
           source:
             legacy.source === "custom" || legacy.source === "builtin"
@@ -252,10 +258,9 @@ function sanitize(value: unknown): KinEthicData {
       );
     }
     for (const preferences of Object.values(data.exercisePreferences)) {
-      preferences.favoriteExerciseIds =
-        preferences.favoriteExerciseIds.filter(
-          (exerciseId) => !removedBuiltInIds.has(exerciseId),
-        );
+      preferences.favoriteExerciseIds = preferences.favoriteExerciseIds.filter(
+        (exerciseId) => !removedBuiltInIds.has(exerciseId),
+      );
       preferences.recentExerciseIds = preferences.recentExerciseIds.filter(
         (exerciseId) => !removedBuiltInIds.has(exerciseId),
       );
@@ -437,7 +442,8 @@ class LocalStorageRepository implements KinEthicRepository {
   saveExercise(
     name: string,
     trackingType: TrackingType = "weight_reps",
-    muscleGroups: MuscleGroup[] = ["Core"],
+    primaryMuscleGroup: MuscleGroup = "Core",
+    secondaryMuscleGroups: MuscleGroup[] = [],
     equipment: Equipment = "Bodyweight",
   ) {
     const data = this.read();
@@ -452,8 +458,14 @@ class LocalStorageRepository implements KinEthicRepository {
     const exercise: ExerciseDefinition = {
       id: id(),
       name: name.trim(),
-      muscleGroups:
-        muscleGroups.length > 0 ? [...new Set(muscleGroups)] : ["Core"],
+      primaryMuscleGroup,
+      secondaryMuscleGroups: [
+        ...new Set(
+          secondaryMuscleGroups.filter(
+            (muscleGroup) => muscleGroup !== primaryMuscleGroup,
+          ),
+        ),
+      ],
       equipment,
       source: "custom",
       trackingType,
@@ -479,8 +491,9 @@ class LocalStorageRepository implements KinEthicRepository {
     }
 
     for (const preferences of Object.values(data.exercisePreferences)) {
-      preferences.favoriteExerciseIds =
-        preferences.favoriteExerciseIds.filter((id) => id !== exerciseId);
+      preferences.favoriteExerciseIds = preferences.favoriteExerciseIds.filter(
+        (id) => id !== exerciseId,
+      );
       preferences.recentExerciseIds = preferences.recentExerciseIds.filter(
         (id) => id !== exerciseId,
       );

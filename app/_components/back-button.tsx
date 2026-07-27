@@ -2,6 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { ArrowLeft, House } from "lucide-react";
+import { ConfirmAction } from "@/components/confirm-action";
+import { ActionButton } from "@/components/kinethic-ui";
 
 type BackButtonProps = {
   fallbackHref: string;
@@ -38,10 +40,6 @@ export function BackButton({
   const router = useRouter();
 
   const navigateBack = () => {
-    if (confirmMessage && !window.confirm(confirmMessage)) {
-      return;
-    }
-
     onBeforeBack?.();
 
     if (hasUsefulHistory()) {
@@ -52,15 +50,27 @@ export function BackButton({
     router.push(fallbackHref);
   };
 
-  return (
-    <button
+  const button = (
+    <ActionButton
       type="button"
-      className="touch-button muted-button gap-2"
+      className="touch-button gap-2"
       onClick={navigateBack}
     >
       <ArrowLeft aria-hidden="true" className="h-4 w-4" />
       Back
-    </button>
+    </ActionButton>
+  );
+
+  return confirmMessage ? (
+    <ConfirmAction
+      trigger={button}
+      title="Leave this page?"
+      description={confirmMessage}
+      actionLabel="Leave"
+      onConfirm={navigateBack}
+    />
+  ) : (
+    button
   );
 }
 
@@ -76,22 +86,30 @@ export function HomeButton({
   const router = useRouter();
 
   const navigateHome = () => {
-    if (confirmMessage && !window.confirm(confirmMessage)) {
-      return;
-    }
-
     onBeforeHome?.();
     router.replace(href);
   };
 
-  return (
-    <button
+  const button = (
+    <ActionButton
       type="button"
-      className="touch-button muted-button gap-2"
+      className="touch-button gap-2"
       onClick={navigateHome}
     >
       <House aria-hidden="true" className="h-4 w-4" />
       Home
-    </button>
+    </ActionButton>
+  );
+
+  return confirmMessage ? (
+    <ConfirmAction
+      trigger={button}
+      title="Return home?"
+      description={confirmMessage}
+      actionLabel="Leave workout"
+      onConfirm={navigateHome}
+    />
+  ) : (
+    button
   );
 }

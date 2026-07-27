@@ -90,7 +90,8 @@ export type Workout = {
 export type ExerciseDefinition = {
   id: Id;
   name: string;
-  muscleGroups: MuscleGroup[];
+  primaryMuscleGroup: MuscleGroup;
+  secondaryMuscleGroups: MuscleGroup[];
   equipment: Equipment;
   source: "builtin" | "custom";
   trackingType: TrackingType;
@@ -139,7 +140,7 @@ export type ExercisePreferences = {
 };
 
 export type KinEthicData = {
-  schemaVersion: 13;
+  schemaVersion: 14;
   profiles: Record<Id, Profile>;
   splits: Record<Id, WorkoutSplit>;
   workouts: Record<Id, Workout>;
@@ -159,7 +160,7 @@ export const emptySchedule = (): WeeklySchedule => ({
 });
 
 export const emptyData = (): KinEthicData => ({
-  schemaVersion: 13,
+  schemaVersion: 14,
   profiles: {},
   splits: {},
   workouts: {},

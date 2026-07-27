@@ -4,6 +4,12 @@ import Link from "next/link";
 import { EmptyState, PageShell } from "@/app/_components/ui";
 import { useKinEthicData } from "@/lib/kinethic/hooks";
 import { repository } from "@/lib/kinethic/repository";
+import { ConfirmAction } from "@/components/confirm-action";
+import {
+  ActionButton,
+  StatusBadge,
+  Surface,
+} from "@/components/kinethic-ui";
 export function SplitListScreen({ profileId }: { profileId: string }) {
   const data = useKinEthicData();
   const profile = data.profiles[profileId];
@@ -33,26 +39,23 @@ export function SplitListScreen({ profileId }: { profileId: string }) {
           <p className="eyebrow">Training plans</p>
           <h1 className="mt-1 text-2xl font-semibold">Workout splits</h1>
         </div>
-        <Link
-          href={`/profiles/${profileId}/splits/new`}
-          className="muted-button"
-        >
-          + New
-        </Link>
+        <ActionButton asChild>
+          <Link href={`/profiles/${profileId}/splits/new`}>+ New</Link>
+        </ActionButton>
       </div>
       <div className="mt-5 space-y-3">
         {splits.length === 0 && (
-          <div className="panel p-5 text-sm leading-6 text-slate-400">
+          <Surface className="p-5 text-sm leading-6 text-slate-400">
             Create a split, assign reusable workouts to weekdays, and make it
             active.
-          </div>
+          </Surface>
         )}
         {splits.map((split) => {
           const active = profile.activeSplitId === split.id;
           const count = Object.values(split.schedule).filter(Boolean).length;
           return (
-            <section
-              className={`panel p-4 ${active ? "theme-accent-surface" : ""}`}
+            <Surface
+              className={`p-4 ${active ? "theme-accent-surface" : ""}`}
               key={split.id}
             >
               <div className="flex items-start justify-between">
@@ -63,68 +66,63 @@ export function SplitListScreen({ profileId }: { profileId: string }) {
                   </p>
                 </div>
                 {active && (
-                  <span className="theme-accent-surface theme-accent-text rounded-full border px-3 py-1 text-xs font-semibold">
+                  <StatusBadge className="px-3 py-1">
                     Active
-                  </span>
+                  </StatusBadge>
                 )}
               </div>
               <div className="mt-4 grid grid-cols-2 gap-2">
-                <Link
-                  href={`/profiles/${profileId}/splits/${split.id}/edit`}
-                  className="muted-button"
-                >
-                  Edit
-                </Link>
+                <ActionButton asChild>
+                  <Link href={`/profiles/${profileId}/splits/${split.id}/edit`}>
+                    Edit
+                  </Link>
+                </ActionButton>
                 {!active ? (
-                  <button
-                    className="primary-button"
+                  <ActionButton
+                    tone="primary"
                     onClick={() =>
                       repository.setActiveSplit(profileId, split.id)
                     }
                   >
                     Make active
-                  </button>
+                  </ActionButton>
                 ) : (
-                  <button
-                    className="danger-button"
-                    onClick={() => {
-                      if (
-                        confirm(
-                          `Delete ${split.name}? Your workouts will remain available.`,
-                        )
-                      )
-                        repository.deleteSplit(split.id);
-                    }}
-                  >
-                    Delete
-                  </button>
+                  <ConfirmAction
+                    trigger={<ActionButton tone="danger">Delete</ActionButton>}
+                    title={`Delete ${split.name}?`}
+                    description="Your workouts will remain available, but this split and its schedule will be removed."
+                    actionLabel="Delete split"
+                    destructive
+                    onConfirm={() => repository.deleteSplit(split.id)}
+                  />
                 )}
               </div>
               {!active && (
-                <button
-                  className="mt-2 min-h-11 w-full text-sm text-red-200"
-                  onClick={() => {
-                    if (
-                      confirm(
-                        `Delete ${split.name}? Your workouts will remain available.`,
-                      )
-                    )
-                      repository.deleteSplit(split.id);
-                  }}
-                >
-                  Delete split
-                </button>
+                <ConfirmAction
+                  trigger={
+                    <ActionButton
+                      tone="ghost"
+                      className="mt-2 w-full text-red-200"
+                    >
+                      Delete split
+                    </ActionButton>
+                  }
+                  title={`Delete ${split.name}?`}
+                  description="Your workouts will remain available, but this split and its schedule will be removed."
+                  actionLabel="Delete split"
+                  destructive
+                  onConfirm={() => repository.deleteSplit(split.id)}
+                />
               )}
-            </section>
+            </Surface>
           );
         })}
       </div>
-      <Link
-        className="muted-button mt-6 w-full"
-        href={`/profiles/${profileId}/workouts`}
-      >
-        Manage workout library
-      </Link>
+      <ActionButton asChild className="mt-6 w-full">
+        <Link href={`/profiles/${profileId}/workouts`}>
+          Manage workout library
+        </Link>
+      </ActionButton>
     </PageShell>
   );
 }
