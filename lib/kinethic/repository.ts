@@ -2,6 +2,7 @@ import {
   DayKey,
   Equipment,
   ExerciseDefinition,
+  Gender,
   Id,
   KinEthicData,
   MuscleGroup,
@@ -26,7 +27,24 @@ export interface KinEthicRepository {
   getServerSnapshot(): string;
   subscribe(listener: () => void): () => void;
   read(): KinEthicData;
-  createProfile(input: { name: string; accent: string }): Profile;
+  createProfile(input: {
+    name: string;
+    accent: string;
+    age: number;
+    gender: Gender;
+    weightLb: number;
+    heightIn: number;
+  }): Profile;
+  updateProfile(
+    profileId: Id,
+    input: {
+      name: string;
+      age: number;
+      gender: Gender;
+      weightLb: number;
+      heightIn: number;
+    },
+  ): Profile | null;
   deleteProfile(profileId: Id): void;
   saveSplit(input: {
     id?: Id;
@@ -146,7 +164,7 @@ function migrateLegacy(raw: string | null): KinEthicData {
 function sanitize(value: unknown): KinEthicData {
   if (
     !isRecord(value) ||
-    ![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14].includes(
+    ![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15].includes(
       Number(value.schemaVersion),
     )
   ) {
@@ -323,7 +341,14 @@ class LocalStorageRepository implements KinEthicRepository {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
     window.dispatchEvent(new Event(CHANGE_EVENT));
   }
-  createProfile(input: { name: string; accent: string }) {
+  createProfile(input: {
+    name: string;
+    accent: string;
+    age: number;
+    gender: Gender;
+    weightLb: number;
+    heightIn: number;
+  }) {
     const data = this.read();
     const stamp = now();
     const profileId = id();
@@ -331,6 +356,10 @@ class LocalStorageRepository implements KinEthicRepository {
       id: profileId,
       name: input.name.trim(),
       accent: input.accent,
+      age: input.age,
+      gender: input.gender,
+      weightLb: input.weightLb,
+      heightIn: input.heightIn,
       activeSplitId: null,
       createdAt: stamp,
       updatedAt: stamp,
@@ -338,6 +367,33 @@ class LocalStorageRepository implements KinEthicRepository {
     data.profiles[profileId] = profile;
     this.write(data);
     return profile;
+  }
+  updateProfile(
+    profileId: Id,
+    input: {
+      name: string;
+      age: number;
+      gender: Gender;
+      weightLb: number;
+      heightIn: number;
+    },
+  ) {
+    const data = this.read();
+    const profile = data.profiles[profileId];
+    if (!profile) return null;
+
+    const updated: Profile = {
+      ...profile,
+      name: input.name.trim(),
+      age: input.age,
+      gender: input.gender,
+      weightLb: input.weightLb,
+      heightIn: input.heightIn,
+      updatedAt: now(),
+    };
+    data.profiles[profileId] = updated;
+    this.write(data);
+    return updated;
   }
   deleteProfile(profileId: Id) {
     const data = this.read();

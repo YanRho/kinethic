@@ -12,6 +12,7 @@ import {
 } from "@/app/_components/ui";
 import {
   TrackingType,
+  Gender,
   WorkoutExercise,
   dayLabel,
   localDay,
@@ -19,6 +20,11 @@ import {
 } from "@/lib/kinethic/domain";
 import { useKinEthicData } from "@/lib/kinethic/hooks";
 import { repository } from "@/lib/kinethic/repository";
+import {
+  calculateBmi,
+  getBmiCategory,
+  getHealthyWeightRange,
+} from "@/lib/kinethic/bmi";
 import { resolveToday } from "@/features/today/resolve-today";
 import {
   DropdownMenu,
@@ -38,7 +44,27 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { ActionButton, Surface } from "@/components/kinethic-ui";
+import { ActionButton, AppInput, Surface } from "@/components/kinethic-ui";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 const repText = (
   reps:
@@ -46,6 +72,15 @@ const repText = (
     | { kind: "range"; min: number; max: number },
 ) =>
   reps.kind === "exact" ? `${reps.reps} reps` : `${reps.min}–${reps.max} reps`;
+
+const bmiGradient = (bmi: number) => {
+  if (bmi < 18.5) return "from-sky-500 via-cyan-500 to-blue-600";
+  if (bmi < 25) return "from-emerald-400 via-green-500 to-teal-600";
+  if (bmi < 30) return "from-amber-400 via-orange-500 to-amber-600";
+  if (bmi < 35) return "from-orange-500 via-rose-500 to-red-600";
+  if (bmi < 40) return "from-rose-500 via-red-600 to-red-800";
+  return "from-fuchsia-600 via-purple-700 to-red-800";
+};
 
 function workoutExerciseText(
   item: WorkoutExercise,
@@ -61,6 +96,14 @@ export function TodayScreen({ profileId }: { profileId: string }) {
   const data = useKinEthicData();
   const router = useRouter();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [profileDialogOpen, setProfileDialogOpen] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editAge, setEditAge] = useState("");
+  const [editGender, setEditGender] =
+    useState<Gender>("prefer_not_to_say");
+  const [editWeightLb, setEditWeightLb] = useState("");
+  const [editHeightFeet, setEditHeightFeet] = useState("");
+  const [editHeightInches, setEditHeightInches] = useState("");
   const profile = data.profiles[profileId];
   const experience = resolveToday(data, profileId);
   const today = localDay();
@@ -94,6 +137,58 @@ export function TodayScreen({ profileId }: { profileId: string }) {
     repository.deleteProfile(profile.id);
     router.replace("/");
   };
+  const openProfileEditor = () => {
+    setEditName(profile.name);
+    setEditAge(profile.age?.toString() ?? "");
+    setEditGender(profile.gender ?? "prefer_not_to_say");
+    setEditWeightLb(profile.weightLb?.toString() ?? "");
+    setEditHeightFeet(
+      profile.heightIn ? Math.floor(profile.heightIn / 12).toString() : "",
+    );
+    setEditHeightInches(
+      profile.heightIn ? (profile.heightIn % 12).toString() : "",
+    );
+    setProfileDialogOpen(true);
+  };
+  const saveProfile = () => {
+    const age = Number(editAge);
+    const weightLb = Number(editWeightLb);
+    const heightFeet = Number(editHeightFeet);
+    const heightInches = Number(editHeightInches);
+    const heightIn = heightFeet * 12 + heightInches;
+    if (
+      !editName.trim() ||
+      !Number.isInteger(age) ||
+      age < 13 ||
+      age > 120 ||
+      !Number.isFinite(weightLb) ||
+      weightLb <= 0 ||
+      weightLb > 1500 ||
+      !Number.isInteger(heightFeet) ||
+      heightFeet < 1 ||
+      heightFeet > 8 ||
+      !Number.isInteger(heightInches) ||
+      heightInches < 0 ||
+      heightInches > 11
+    ) {
+      return;
+    }
+    repository.updateProfile(profile.id, {
+      name: editName,
+      age,
+      gender: editGender,
+      weightLb,
+      heightIn,
+    });
+    setProfileDialogOpen(false);
+  };
+  const bmi =
+    profile.weightLb && profile.heightIn
+      ? calculateBmi(profile.weightLb, profile.heightIn)
+      : null;
+  const healthyWeightRange = profile.heightIn
+    ? getHealthyWeightRange(profile.heightIn)
+    : null;
   const startWorkout = () => {
     if (!workout || workout.exercises.length === 0) {
       return;
@@ -153,9 +248,75 @@ export function TodayScreen({ profileId }: { profileId: string }) {
         <section className="pt-10">
           <div className="flex items-center gap-4">
             <ProfileBadge profile={profile} size="sm" />
-            <div>
+            <div className="min-w-0 flex-1">
               <p className="text-sm text-slate-400">Welcome back,</p>
-              <h1 className="text-2xl font-semibold">{profile.name}</h1>
+              <div className="mt-1 flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  className="theme-accent-text min-w-0 truncate rounded-md text-left text-2xl font-semibold underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-4"
+                  onClick={openProfileEditor}
+                  aria-label={`Edit ${profile.name}'s profile`}
+                >
+                  {profile.name}
+                </button>
+                {bmi && profile.age !== undefined ? (
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button
+                        type="button"
+                        className={`rounded-full bg-linear-to-r px-2.5 py-1 text-xs font-bold text-white shadow-sm ${profile.age >= 20 ? bmiGradient(bmi) : "from-indigo-500 via-violet-500 to-purple-600"}`}
+                        aria-label={`BMI ${bmi.toFixed(1)}${profile.age >= 20 ? `, ${getBmiCategory(bmi)}` : ""}`}
+                      >
+                        BMI {bmi.toFixed(1)}
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent
+                      align="start"
+                      style={getProfileThemeStyle(profile.accent)}
+                      className="profile-theme w-[min(20rem,calc(100vw-2rem))] border border-(--profile-border) bg-(--profile-panel-strong) p-4 text-white"
+                    >
+                      <p className="font-semibold">
+                        {profile.age >= 20
+                          ? getBmiCategory(bmi)
+                          : "Age-specific guidance"}
+                      </p>
+                      {profile.age >= 20 && healthyWeightRange ? (
+                        <p className="text-sm leading-6 text-slate-400">
+                          The WHO healthy adult BMI range of 18.5–24.9 is about{" "}
+                          {Math.round(healthyWeightRange.minLb)}–
+                          {Math.round(healthyWeightRange.maxLb)} lb at your
+                          height.
+                        </p>
+                      ) : (
+                        <p className="text-sm leading-6 text-slate-400">
+                          For people under 20, WHO uses age- and sex-specific
+                          growth references instead of adult categories.
+                        </p>
+                      )}
+                      <p className="text-xs leading-5 text-slate-500">
+                        BMI is a screening measure, not a diagnosis or
+                        personalized target.
+                      </p>
+                      <a
+                        className="theme-accent-text text-xs font-semibold underline underline-offset-4"
+                        href="https://www.who.int/europe/news-room/fact-sheets/item/nutrition---maintaining-a-healthy-lifestyle"
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        WHO adult BMI guidance
+                      </a>
+                    </PopoverContent>
+                  </Popover>
+                ) : (
+                  <button
+                    type="button"
+                    className="rounded-full border border-(--profile-border) px-2.5 py-1 text-xs font-semibold text-slate-400"
+                    onClick={openProfileEditor}
+                  >
+                    Add BMI
+                  </button>
+                )}
+              </div>
             </div>
           </div>
           <p className="mt-10 text-sm font-medium text-slate-500">
@@ -309,6 +470,109 @@ export function TodayScreen({ profileId }: { profileId: string }) {
           </nav>
         </section>
       </div>
+      <Dialog open={profileDialogOpen} onOpenChange={setProfileDialogOpen}>
+        <DialogContent
+          className="profile-theme max-h-[calc(100dvh-2rem)] overflow-y-auto border-(--profile-border) bg-(--profile-panel) text-white sm:max-w-md"
+          style={getProfileThemeStyle(profile.accent)}
+        >
+          <DialogHeader>
+            <DialogTitle>Edit profile</DialogTitle>
+            <DialogDescription>
+              Update your personal details and BMI inputs.
+            </DialogDescription>
+          </DialogHeader>
+          <label className="field">
+            <span>Name</span>
+            <AppInput
+              value={editName}
+              onChange={(event) => setEditName(event.target.value)}
+            />
+          </label>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="field">
+              <span>Age</span>
+              <AppInput
+                type="number"
+                min="13"
+                max="120"
+                inputMode="numeric"
+                value={editAge}
+                onChange={(event) => setEditAge(event.target.value)}
+              />
+            </label>
+            <label className="field">
+              <span>Gender</span>
+              <Select
+                value={editGender}
+                onValueChange={(value) => setEditGender(value as Gender)}
+              >
+                <SelectTrigger className="mt-2 min-h-12 w-full rounded-2xl border-(--profile-border) bg-(--profile-background)">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="woman">Woman</SelectItem>
+                  <SelectItem value="man">Man</SelectItem>
+                  <SelectItem value="nonbinary">Non-binary</SelectItem>
+                  <SelectItem value="prefer_not_to_say">
+                    Prefer not to say
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </label>
+          </div>
+          <label className="field">
+            <span>Weight (lb)</span>
+            <AppInput
+              type="number"
+              min="1"
+              max="1500"
+              step="0.1"
+              inputMode="decimal"
+              value={editWeightLb}
+              onChange={(event) => setEditWeightLb(event.target.value)}
+            />
+          </label>
+          <fieldset>
+            <legend className="text-sm font-medium text-slate-300">
+              Height
+            </legend>
+            <div className="mt-2 grid grid-cols-2 gap-3">
+              <label className="field">
+                <span className="sr-only">Height in feet</span>
+                <AppInput
+                  type="number"
+                  min="1"
+                  max="8"
+                  inputMode="numeric"
+                  placeholder="Feet"
+                  value={editHeightFeet}
+                  onChange={(event) => setEditHeightFeet(event.target.value)}
+                />
+              </label>
+              <label className="field">
+                <span className="sr-only">Additional height in inches</span>
+                <AppInput
+                  type="number"
+                  min="0"
+                  max="11"
+                  inputMode="numeric"
+                  placeholder="Inches"
+                  value={editHeightInches}
+                  onChange={(event) => setEditHeightInches(event.target.value)}
+                />
+              </label>
+            </div>
+          </fieldset>
+          <DialogFooter>
+            <ActionButton type="button" onClick={() => setProfileDialogOpen(false)}>
+              Cancel
+            </ActionButton>
+            <ActionButton tone="primary" type="button" onClick={saveProfile}>
+              Save changes
+            </ActionButton>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>

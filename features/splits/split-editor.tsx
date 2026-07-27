@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Plus, RefreshCw, X } from "lucide-react";
 import { EmptyState, PageShell } from "@/app/_components/ui";
 import {
   DayKey,
@@ -135,23 +136,41 @@ export function SplitEditor({
                       </p>
                     )}
                   </div>
-                  <ActionButton
-                    type="button"
-                    onClick={() => setSelecting(day)}
-                  >
-                    {workout ? "Replace" : "Assign"}
-                  </ActionButton>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <ActionButton
+                      type="button"
+                      size="icon-lg"
+                      aria-label={`${workout ? "Replace" : "Assign"} workout for ${dayLabel(day)}`}
+                      title={workout ? "Replace workout" : "Assign workout"}
+                      className="rounded-xl border border-(--profile-border)"
+                      onClick={() => setSelecting(day)}
+                    >
+                      {workout ? (
+                        <RefreshCw aria-hidden="true" />
+                      ) : (
+                        <Plus aria-hidden="true" />
+                      )}
+                    </ActionButton>
+                    {schedule[day] && (
+                      <ActionButton
+                        tone="ghost"
+                        type="button"
+                        size="icon-lg"
+                        aria-label={`Remove workout assignment for ${dayLabel(day)}`}
+                        title="Remove assignment"
+                        className="rounded-xl border border-red-300/20 text-red-200 hover:bg-red-300/10"
+                        onClick={() =>
+                          setSchedule((current) => ({
+                            ...current,
+                            [day]: null,
+                          }))
+                        }
+                      >
+                        <X aria-hidden="true" />
+                      </ActionButton>
+                    )}
+                  </div>
                 </div>
-                {schedule[day] && (
-                  <ActionButton
-                    tone="ghost"
-                    type="button"
-                    onClick={() => setSchedule((x) => ({ ...x, [day]: null }))}
-                    className="mt-3 min-h-11 text-sm font-medium text-red-200"
-                  >
-                    Remove assignment
-                  </ActionButton>
-                )}
               </Surface>
             );
           })}

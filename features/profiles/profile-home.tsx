@@ -5,7 +5,15 @@ import { useRouter } from "next/navigation";
 import { ProfileBadge } from "@/app/_components/ui";
 import { useKinEthicData, useKinEthicHydrated } from "@/lib/kinethic/hooks";
 import { repository } from "@/lib/kinethic/repository";
+import { Gender } from "@/lib/kinethic/domain";
 import { ActionButton, AppInput } from "@/components/kinethic-ui";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const accents = [
   "from-cyan-300 via-blue-400 to-indigo-500",
@@ -21,14 +29,44 @@ export function ProfileHome() {
   const router = useRouter();
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState("");
+  const [age, setAge] = useState("");
+  const [gender, setGender] = useState<Gender>("prefer_not_to_say");
+  const [weightLb, setWeightLb] = useState("");
+  const [heightFeet, setHeightFeet] = useState("");
+  const [heightInches, setHeightInches] = useState("");
   const [accent, setAccent] = useState(accents[0]);
   const showingCreator = creating || profiles.length === 0;
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    if (!name.trim()) {
+    const parsedAge = Number(age);
+    const parsedWeight = Number(weightLb);
+    const parsedFeet = Number(heightFeet);
+    const parsedInches = Number(heightInches);
+    if (
+      !name.trim() ||
+      !Number.isInteger(parsedAge) ||
+      parsedAge < 13 ||
+      parsedAge > 120 ||
+      !Number.isFinite(parsedWeight) ||
+      parsedWeight <= 0 ||
+      parsedWeight > 1500 ||
+      !Number.isInteger(parsedFeet) ||
+      parsedFeet < 1 ||
+      parsedFeet > 8 ||
+      !Number.isInteger(parsedInches) ||
+      parsedInches < 0 ||
+      parsedInches > 11
+    ) {
       return;
     }
-    const profile = repository.createProfile({ name, accent });
+    const profile = repository.createProfile({
+      name,
+      accent,
+      age: parsedAge,
+      gender,
+      weightLb: parsedWeight,
+      heightIn: parsedFeet * 12 + parsedInches,
+    });
     router.replace(`/profiles/${profile.id}/splits/new`);
   };
   return (
@@ -100,6 +138,87 @@ export function ProfileHome() {
                   placeholder="Enter a name"
                 />
               </label>
+              <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                <label className="field">
+                  <span>Age</span>
+                  <AppInput
+                    required
+                    type="number"
+                    min="13"
+                    max="120"
+                    inputMode="numeric"
+                    value={age}
+                    onChange={(e) => setAge(e.target.value)}
+                    placeholder="Age"
+                  />
+                </label>
+                <label className="field">
+                  <span>Gender</span>
+                  <Select
+                    value={gender}
+                    onValueChange={(value) => setGender(value as Gender)}
+                  >
+                    <SelectTrigger className="mt-2 min-h-12 w-full rounded-2xl border-white/10 bg-[#080b12]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="woman">Woman</SelectItem>
+                      <SelectItem value="man">Man</SelectItem>
+                      <SelectItem value="nonbinary">Non-binary</SelectItem>
+                      <SelectItem value="prefer_not_to_say">
+                        Prefer not to say
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </label>
+              </div>
+              <label className="field mt-4">
+                <span>Weight (lb)</span>
+                <AppInput
+                  required
+                  type="number"
+                  min="1"
+                  max="1500"
+                  step="0.1"
+                  inputMode="decimal"
+                  value={weightLb}
+                  onChange={(e) => setWeightLb(e.target.value)}
+                  placeholder="Weight"
+                />
+              </label>
+              <fieldset className="mt-4">
+                <legend className="text-sm font-medium text-slate-300">
+                  Height
+                </legend>
+                <div className="mt-2 grid grid-cols-2 gap-3">
+                  <label className="field">
+                    <span className="sr-only">Height in feet</span>
+                    <AppInput
+                      required
+                      type="number"
+                      min="1"
+                      max="8"
+                      inputMode="numeric"
+                      value={heightFeet}
+                      onChange={(e) => setHeightFeet(e.target.value)}
+                      placeholder="Feet"
+                    />
+                  </label>
+                  <label className="field">
+                    <span className="sr-only">Additional height in inches</span>
+                    <AppInput
+                      required
+                      type="number"
+                      min="0"
+                      max="11"
+                      inputMode="numeric"
+                      value={heightInches}
+                      onChange={(e) => setHeightInches(e.target.value)}
+                      placeholder="Inches"
+                    />
+                  </label>
+                </div>
+              </fieldset>
               <div className="mt-5">
                 <p className="text-sm font-medium text-slate-300">
                   Profile color
