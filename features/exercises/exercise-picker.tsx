@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { ListFilter } from "lucide-react";
+import { useMemo, useState } from "react";
+import { ListFilter, XIcon } from "lucide-react";
 import {
   Equipment,
   ExerciseDefinition,
@@ -12,6 +12,32 @@ import {
 } from "@/lib/kinethic/domain";
 import { useKinEthicData } from "@/lib/kinethic/hooks";
 import { repository } from "@/lib/kinethic/repository";
+import { getProfileThemeStyle } from "@/app/_components/ui";
+import { ConfirmAction } from "@/components/confirm-action";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { ActionButton, AppInput, Surface } from "@/components/kinethic-ui";
+import {
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Command, CommandInput } from "@/components/ui/command";
 
 type ExercisePickerProps = {
   profileId: Id;
@@ -53,17 +79,18 @@ function ExerciseSection({
           const favorite = favoriteIds.includes(exercise.id);
 
           return (
-            <div
-              className={`panel flex min-h-18 items-center gap-2 p-2 ${selected ? "theme-accent-surface" : ""}`}
+            <Surface
+              className={`flex min-h-18 flex-row items-center gap-2 p-2 ${selected ? "theme-accent-surface" : ""}`}
               key={`${title}:${exercise.id}`}
             >
-              <button
+              <ActionButton
+                tone="ghost"
                 type="button"
                 className="flex min-w-0 flex-1 items-center gap-3 rounded-2xl p-2 text-left"
                 onClick={() => onSelect(exercise.id)}
               >
                 <span
-                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border text-sm font-semibold ${selected ? "border-(--profile-accent) bg-(--profile-accent) text-(--profile-primary-text)" : "border-(--profile-border) text-slate-400"}`}
+                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border text-sm font-semibold ${selected ? "border-(--profile-accent) bg-(--profile-accent) text-(--profile-primary-text)" : "border-(--profile-border) text-slate-400"}`}
                 >
                   {selected ? selectionIndex + 1 : "+"}
                 </span>
@@ -72,11 +99,16 @@ function ExerciseSection({
                     {exercise.name}
                   </span>
                   <span className="mt-1 block truncate text-xs text-slate-400">
-                    {exercise.muscleGroups.join(", ")} · {exercise.equipment}
+                    {exercise.primaryMuscleGroup}
+                    {exercise.secondaryMuscleGroups.length > 0
+                      ? ` + ${exercise.secondaryMuscleGroups.join(", ")}`
+                      : ""}{" "}
+                    · {exercise.equipment}
                   </span>
                 </span>
-              </button>
-              <button
+              </ActionButton>
+              <ActionButton
+                tone="ghost"
                 type="button"
                 aria-label={
                   favorite ? "Remove from favorites" : "Add to favorites"
@@ -85,18 +117,27 @@ function ExerciseSection({
                 onClick={() => onFavorite(exercise.id)}
               >
                 {favorite ? "★" : "☆"}
-              </button>
+              </ActionButton>
               {exercise.source === "custom" && (
-                <button
-                  type="button"
-                  aria-label={`Delete ${exercise.name}`}
-                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-lg text-red-300 transition hover:bg-red-300/10"
-                  onClick={() => onDelete(exercise)}
-                >
-                  ×
-                </button>
+                <ConfirmAction
+                  trigger={
+                    <ActionButton
+                      tone="ghost"
+                      type="button"
+                      aria-label={`Delete ${exercise.name}`}
+                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-lg text-red-300 transition hover:bg-red-300/10"
+                    >
+                      ×
+                    </ActionButton>
+                  }
+                  title={`Delete ${exercise.name}?`}
+                  description="It will also be removed from saved workouts, favorites, and recent exercises."
+                  actionLabel="Delete exercise"
+                  destructive
+                  onConfirm={() => onDelete(exercise)}
+                />
               )}
-            </div>
+            </Surface>
           );
         })}
       </div>
@@ -111,22 +152,30 @@ export function ExercisePicker({
   onDelete,
 }: ExercisePickerProps) {
   const data = useKinEthicData();
+  const profile = data.profiles[profileId];
   const [query, setQuery] = useState("");
-  const [muscleFilter, setMuscleFilter] =
-    useState<"All" | MuscleGroup>("All");
-  const [equipmentFilter, setEquipmentFilter] =
-    useState<"All" | Equipment>("All");
+  const [muscleFilter, setMuscleFilter] = useState<"All" | MuscleGroup>("All");
+  const [equipmentFilter, setEquipmentFilter] = useState<"All" | Equipment>(
+    "All",
+  );
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Id[]>([]);
   const [creatingCustom, setCreatingCustom] = useState(false);
   const [customName, setCustomName] = useState("");
-  const [customMuscles, setCustomMuscles] = useState<MuscleGroup[]>([]);
-  const [customEquipment, setCustomEquipment] =
-    useState<Equipment>(equipmentOptions[0]);
+  const [customPrimaryMuscle, setCustomPrimaryMuscle] = useState<MuscleGroup>(
+    muscleGroupOptions[0],
+  );
+  const [customSecondaryMuscles, setCustomSecondaryMuscles] = useState<
+    MuscleGroup[]
+  >([]);
+  const [customEquipment, setCustomEquipment] = useState<Equipment>(
+    equipmentOptions[0],
+  );
   const exercises = useMemo(
     () =>
-      Object.values(data.exercises)
-        .sort((a, b) => a.name.localeCompare(b.name)),
+      Object.values(data.exercises).sort((a, b) =>
+        a.name.localeCompare(b.name),
+      ),
     [data.exercises],
   );
   const preferences = data.exercisePreferences[profileId] ?? {
@@ -140,7 +189,9 @@ export function ExercisePicker({
       .toLocaleLowerCase()
       .includes(query.trim().toLocaleLowerCase());
     const matchesMuscle =
-      muscleFilter === "All" || exercise.muscleGroups.includes(muscleFilter);
+      muscleFilter === "All" ||
+      exercise.primaryMuscleGroup === muscleFilter ||
+      exercise.secondaryMuscleGroups.includes(muscleFilter);
     const matchesEquipment =
       equipmentFilter === "All" || exercise.equipment === equipmentFilter;
 
@@ -156,15 +207,6 @@ export function ExercisePicker({
     .filter((exercise): exercise is ExerciseDefinition =>
       filteredExercises.some((candidate) => candidate.id === exercise?.id),
     );
-
-  useEffect(() => {
-    const previousOverflow = document.body.style.overflow;
-
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = previousOverflow;
-    };
-  }, []);
 
   const toggleSelection = (exerciseId: Id) => {
     setSelectedIds((current) =>
@@ -182,22 +224,14 @@ export function ExercisePicker({
     onAdd(selectedIds);
   };
   const deleteCustomExercise = (exercise: ExerciseDefinition) => {
-    if (
-      !window.confirm(
-        `Delete ${exercise.name}? It will also be removed from saved workouts, favorites, and recent exercises.`,
-      )
-    ) {
-      return;
-    }
-
     setSelectedIds((current) =>
       current.filter((exerciseId) => exerciseId !== exercise.id),
     );
     repository.deleteExercise(exercise.id);
     onDelete?.(exercise.id);
   };
-  const toggleCustomMuscle = (muscleGroup: MuscleGroup) => {
-    setCustomMuscles((current) =>
+  const toggleCustomSecondaryMuscle = (muscleGroup: MuscleGroup) => {
+    setCustomSecondaryMuscles((current) =>
       current.includes(muscleGroup)
         ? current.filter((item) => item !== muscleGroup)
         : [...current, muscleGroup],
@@ -211,7 +245,8 @@ export function ExercisePicker({
     const exercise = repository.saveExercise(
       customName,
       "weight_reps",
-      customMuscles,
+      customPrimaryMuscle,
+      customSecondaryMuscles,
       customEquipment,
     );
 
@@ -220,7 +255,8 @@ export function ExercisePicker({
     );
     setCreatingCustom(false);
     setCustomName("");
-    setCustomMuscles([]);
+    setCustomPrimaryMuscle(muscleGroupOptions[0]);
+    setCustomSecondaryMuscles([]);
     setCustomEquipment(equipmentOptions[0]);
   };
   const sectionProps = {
@@ -233,42 +269,54 @@ export function ExercisePicker({
   };
 
   return (
-    <div
-      aria-modal="true"
-      role="dialog"
-      className="profile-overlay fixed inset-0 z-100 min-h-dvh overflow-y-auto overscroll-contain bg-(--profile-background) text-white"
-    >
-      <div className="mx-auto min-h-full max-w-2xl px-4 pb-28">
-        <header className="sticky top-0 z-20 -mx-4 border-b border-(--profile-border) bg-(--profile-background) px-4 pb-4 pt-4">
-          <div className="flex items-center justify-between gap-3">
-            <h1 className="text-xl font-semibold">Add exercises</h1>
-            <button type="button" className="muted-button" onClick={onClose}>
-              Close
-            </button>
+    <Sheet open onOpenChange={(open) => !open && onClose()}>
+      <SheetContent
+        side="right"
+        showCloseButton={false}
+        style={profile ? getProfileThemeStyle(profile.accent) : undefined}
+        className="profile-theme profile-overlay h-dvh w-[calc(100%-1rem)] max-w-none gap-0 overflow-hidden border-(--profile-border) bg-(--profile-background) p-0 text-white sm:w-[min(90vw,32rem)] sm:max-w-lg"
+      >
+        <SheetHeader className="shrink-0 border-b border-(--profile-border) bg-(--profile-background) px-4 py-4 text-left sm:px-6">
+          <div className="flex min-h-11 items-center justify-between gap-3">
+            <SheetTitle className="text-xl font-semibold text-white">
+              Add exercises
+            </SheetTitle>
+            <SheetClose asChild>
+              <ActionButton
+                type="button"
+                size="icon-lg"
+                aria-label="Close add exercises"
+                className="rounded-full border border-(--profile-border)"
+              >
+                <XIcon aria-hidden="true" />
+              </ActionButton>
+            </SheetClose>
           </div>
-          <label className="field mt-4">
-            <span className="sr-only">Search exercises</span>
-            <input
+          <Command shouldFilter={false} className="mt-4 bg-transparent">
+            <CommandInput
               autoFocus
               value={query}
-              onChange={(event) => setQuery(event.target.value)}
+              onValueChange={setQuery}
               placeholder="Search exercises"
+              aria-label="Search exercises"
             />
-          </label>
-        </header>
+          </Command>
+        </SheetHeader>
 
-        <button
-          type="button"
-          className="primary-button mt-5"
-          onClick={() => setCreatingCustom(true)}
-        >
-          Create Exercise
-        </button>
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-6 sm:px-6">
+          <ActionButton
+            tone="primary"
+            type="button"
+            className="mt-5"
+            onClick={() => setCreatingCustom(true)}
+          >
+            Create Exercise
+          </ActionButton>
 
         <div className="mt-5">
-          <button
+          <ActionButton
             type="button"
-            className="muted-button w-auto gap-2"
+            className="w-auto gap-2"
             aria-expanded={filtersOpen}
             aria-controls="exercise-filters"
             onClick={() => setFiltersOpen((open) => !open)}
@@ -278,52 +326,65 @@ export function ExercisePicker({
             {(muscleFilter !== "All" || equipmentFilter !== "All") && (
               <span className="theme-accent-text text-xs">Active</span>
             )}
-          </button>
+          </ActionButton>
           {filtersOpen && (
-            <div id="exercise-filters" className="panel mt-3 grid gap-3 p-4 sm:grid-cols-2">
+            <Surface
+              id="exercise-filters"
+              className="panel mt-3 grid gap-3 p-4 sm:grid-cols-2"
+            >
               <label className="field">
                 <span>Muscle group</span>
-                <select
+                <Select
                   value={muscleFilter}
-                  onChange={(event) =>
-                    setMuscleFilter(event.target.value as "All" | MuscleGroup)
+                  onValueChange={(value) =>
+                    setMuscleFilter(value as "All" | MuscleGroup)
                   }
                 >
-                  {muscleGroups.map((muscle) => (
-                    <option key={muscle} value={muscle}>
-                      {muscle}
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger className="mt-2 min-h-12 w-full rounded-2xl border-(--profile-border) bg-(--profile-background)">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {muscleGroups.map((muscle) => (
+                      <SelectItem key={muscle} value={muscle}>
+                        {muscle}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </label>
               <label className="field">
                 <span>Equipment</span>
-                <select
+                <Select
                   value={equipmentFilter}
-                  onChange={(event) =>
-                    setEquipmentFilter(event.target.value as "All" | Equipment)
+                  onValueChange={(value) =>
+                    setEquipmentFilter(value as "All" | Equipment)
                   }
                 >
-                  {equipmentTypes.map((equipment) => (
-                    <option key={equipment} value={equipment}>
-                      {equipment}
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger className="mt-2 min-h-12 w-full rounded-2xl border-(--profile-border) bg-(--profile-background)">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {equipmentTypes.map((equipment) => (
+                      <SelectItem key={equipment} value={equipment}>
+                        {equipment}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </label>
               {(muscleFilter !== "All" || equipmentFilter !== "All") && (
-                <button
+                <ActionButton
                   type="button"
-                  className="muted-button sm:col-span-2"
+                  className="sm:col-span-2"
                   onClick={() => {
                     setMuscleFilter("All");
                     setEquipmentFilter("All");
                   }}
                 >
                   Clear filters
-                </button>
+                </ActionButton>
               )}
-            </div>
+            </Surface>
           )}
         </div>
 
@@ -343,97 +404,136 @@ export function ExercisePicker({
           {...sectionProps}
         />
 
-        {filteredExercises.length === 0 && (
-          <div className="panel mt-7 p-5 text-sm text-slate-400">
-            No exercises match these filters.
-          </div>
-        )}
-      </div>
+          {filteredExercises.length === 0 && (
+            <Surface className="mt-7 p-5 text-sm text-slate-400">
+              No exercises match these filters.
+            </Surface>
+          )}
+        </div>
 
-      <div className="fixed inset-x-0 bottom-0 z-20 border-t border-(--profile-border) bg-(--profile-background) p-4">
-        <button
-          type="button"
-          className="primary-button mx-auto max-w-2xl"
-          disabled={selectedIds.length === 0}
-          onClick={addSelectedExercises}
-        >
-          Add {selectedIds.length || ""}{" "}
-          {selectedIds.length === 1 ? "Exercise" : "Exercises"}
-        </button>
-      </div>
+        <SheetFooter className="shrink-0 border-t border-(--profile-border) bg-(--profile-background) p-4 sm:px-6">
+          <ActionButton
+            tone="primary"
+            type="button"
+            disabled={selectedIds.length === 0}
+            onClick={addSelectedExercises}
+          >
+            Add {selectedIds.length || ""}{" "}
+            {selectedIds.length === 1 ? "Exercise" : "Exercises"}
+          </ActionButton>
+        </SheetFooter>
 
-      {creatingCustom && (
-        <div className="fixed inset-0 z-30 grid place-items-center bg-black/75 p-4">
-          <div className="panel max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto p-5">
-            <h2 className="text-xl font-semibold">Create Custom Exercise</h2>
+        <Dialog open={creatingCustom} onOpenChange={setCreatingCustom}>
+          <DialogContent
+            style={profile ? getProfileThemeStyle(profile.accent) : undefined}
+            className="profile-theme max-h-[calc(100dvh-2rem)] overflow-y-auto border-(--profile-border) bg-(--profile-panel) text-white sm:max-w-md"
+          >
+            <DialogHeader>
+              <DialogTitle>Create Custom Exercise</DialogTitle>
+              <DialogDescription>
+                Add a reusable exercise to your local library.
+              </DialogDescription>
+            </DialogHeader>
             <label className="field mt-5">
               <span>Name</span>
-              <input
+              <AppInput
                 value={customName}
                 onChange={(event) => setCustomName(event.target.value)}
               />
             </label>
+            <label className="field mt-4">
+              <span>Primary muscle group</span>
+              <Select
+                value={customPrimaryMuscle}
+                onValueChange={(value) => {
+                  const muscleGroup = value as MuscleGroup;
+                  setCustomPrimaryMuscle(muscleGroup);
+                  setCustomSecondaryMuscles((current) =>
+                    current.filter((item) => item !== muscleGroup),
+                  );
+                }}
+              >
+                <SelectTrigger className="mt-2 min-h-12 w-full rounded-2xl border-(--profile-border) bg-(--profile-background)">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {muscleGroupOptions.map((muscleGroup) => (
+                    <SelectItem key={muscleGroup} value={muscleGroup}>
+                      {muscleGroup}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </label>
             <fieldset className="mt-4">
               <legend className="text-sm font-medium text-slate-300">
-                Muscle groups
+                Secondary muscle groups (optional)
               </legend>
               <div className="mt-2 grid grid-cols-2 gap-2">
-                {muscleGroupOptions.map((muscleGroup) => {
-                  const selected = customMuscles.includes(muscleGroup);
+                {muscleGroupOptions
+                  .filter((muscleGroup) => muscleGroup !== customPrimaryMuscle)
+                  .map((muscleGroup) => {
+                    const selected =
+                      customSecondaryMuscles.includes(muscleGroup);
 
-                  return (
-                    <button
-                      type="button"
-                      key={muscleGroup}
-                      aria-pressed={selected}
-                      className={
-                        selected
-                          ? "theme-accent-surface min-h-11 rounded-xl border px-3 py-2 text-sm font-semibold"
-                          : "min-h-11 rounded-xl border border-(--profile-border) px-3 py-2 text-sm text-slate-300"
-                      }
-                      onClick={() => toggleCustomMuscle(muscleGroup)}
-                    >
-                      {muscleGroup}
-                    </button>
-                  );
-                })}
+                    return (
+                      <ActionButton
+                        tone="ghost"
+                        type="button"
+                        key={muscleGroup}
+                        aria-pressed={selected}
+                        className={
+                          selected
+                            ? "theme-accent-surface min-h-11 rounded-xl border px-3 py-2 text-sm font-semibold"
+                            : "min-h-11 rounded-xl border border-(--profile-border) px-3 py-2 text-sm text-slate-300"
+                        }
+                        onClick={() => toggleCustomSecondaryMuscle(muscleGroup)}
+                      >
+                        {muscleGroup}
+                      </ActionButton>
+                    );
+                  })}
               </div>
             </fieldset>
             <label className="field mt-4">
               <span>Equipment</span>
-              <select
+              <Select
                 value={customEquipment}
-                onChange={(event) =>
-                  setCustomEquipment(event.target.value as Equipment)
+                onValueChange={(value) =>
+                  setCustomEquipment(value as Equipment)
                 }
               >
-                {equipmentOptions.map((equipment) => (
-                  <option key={equipment} value={equipment}>
-                    {equipment}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger className="mt-2 min-h-12 w-full rounded-2xl border-(--profile-border) bg-(--profile-background)">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {equipmentOptions.map((equipment) => (
+                    <SelectItem key={equipment} value={equipment}>
+                      {equipment}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </label>
             <div className="mt-5 grid grid-cols-2 gap-3">
-              <button
+              <ActionButton
                 type="button"
-                className="muted-button"
                 onClick={() => setCreatingCustom(false)}
               >
                 Cancel
-              </button>
-              <button
+              </ActionButton>
+              <ActionButton
+                tone="primary"
                 type="button"
-                className="primary-button"
-                disabled={!customName.trim() || customMuscles.length === 0}
+                disabled={!customName.trim()}
                 onClick={createCustomExercise}
               >
                 Create
-              </button>
+              </ActionButton>
             </div>
-          </div>
-        </div>
-      )}
-    </div>
+          </DialogContent>
+        </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }

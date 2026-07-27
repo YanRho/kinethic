@@ -6,6 +6,7 @@ import {
   SessionSet,
   TrackingType,
 } from "@/lib/kinethic/domain";
+import { ActionButton, AppInput } from "@/components/kinethic-ui";
 
 export type ExerciseLoggerProps = {
   exercise: SessionExercise;
@@ -33,7 +34,7 @@ function NumberInput({
   return (
     <label className="field">
       <span>{label}</span>
-      <input
+      <AppInput
         disabled={disabled}
         inputMode={inputMode}
         min="0"
@@ -91,7 +92,8 @@ function SetContainer({
                     </span>
                   )}
                   {isEditing ? (
-                    <button
+                    <ActionButton
+                      tone="ghost"
                       type="button"
                       aria-label="Save set correction"
                       title="Save correction"
@@ -99,27 +101,28 @@ function SetContainer({
                       onClick={() => setEditingSetNumber(null)}
                     >
                       ✓
-                    </button>
+                    </ActionButton>
                   ) : (
-                    <button
+                    <ActionButton
                       type="button"
                       aria-label="Edit completed set"
                       title="Edit completed set"
-                      className="muted-button h-10 min-h-10 w-10 rounded-full p-0 text-lg"
+                      className="h-10 min-h-10 w-10 rounded-full p-0 text-lg"
                       onClick={() => setEditingSetNumber(set.setNumber)}
                     >
                       ✎
-                    </button>
+                    </ActionButton>
                   )}
                 </div>
               ) : (
-                <button
-                  className="primary-button w-auto"
+                <ActionButton
+                  tone="primary"
+                  className="w-auto"
                   disabled={!isNext || !isValid(set) || restSeconds > 0}
                   onClick={() => onCompleteSet(set.setNumber)}
                 >
                   Complete Set
-                </button>
+                </ActionButton>
               )}
             </div>
             <div className="mt-3 grid gap-3 sm:grid-cols-2">
@@ -142,7 +145,7 @@ function WeightRepsLogger(props: ExerciseLoggerProps) {
     <>
       <label className="field mt-6 block max-w-xs">
         <span>Working weight ({props.exercise.weightUnit})</span>
-        <input
+        <AppInput
           inputMode="decimal"
           min="0"
           step="0.5"

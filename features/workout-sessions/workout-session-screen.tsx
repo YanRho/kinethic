@@ -12,11 +12,29 @@ import {
   getPreviousExercise,
 } from "./recommendations";
 import { ExerciseLogger } from "./exercise-loggers";
+import { ActionButton, Surface } from "@/components/kinethic-ui";
 import {
   formatTimer,
   useElapsedWorkoutSeconds,
   useRestSeconds,
 } from "./use-session-timers";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 type WorkoutSessionScreenProps = {
   profileId: string;
@@ -266,19 +284,23 @@ export function WorkoutSessionScreen({
         </div>
 
         {sessionComplete ? (
-          <section className="panel mt-8 p-6 text-center">
+          <Surface className="mt-8 p-6 text-center">
             <p className="eyebrow">All exercises complete</p>
             <h2 className="mt-3 text-3xl font-semibold">Workout complete</h2>
             <p className="mt-3 text-sm leading-6 text-slate-400">
               Finish to save this session to local workout history.
             </p>
-            <button className="primary-button mt-6" onClick={finishWorkout}>
+            <ActionButton
+              tone="primary"
+              className="mt-6"
+              onClick={finishWorkout}
+            >
               Finish Workout
-            </button>
-          </section>
+            </ActionButton>
+          </Surface>
         ) : (
           currentExercise && (
-            <section className="panel mt-8 p-4 sm:p-6">
+            <Surface className="mt-8 p-4 sm:p-6">
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="text-xs text-slate-400">
@@ -293,12 +315,13 @@ export function WorkoutSessionScreen({
                     {currentExercise.restSeconds}s rest
                   </p>
                 </div>
-                <button
+                <ActionButton
+                  tone="ghost"
                   className="min-h-11 text-sm font-semibold text-red-200"
                   onClick={() => setShowSkipConfirmation(true)}
                 >
                   Skip
-                </button>
+                </ActionButton>
               </div>
 
               {previousExercise && (
@@ -334,22 +357,27 @@ export function WorkoutSessionScreen({
                   {currentExercise.notes}
                 </p>
               )}
-            </section>
+            </Surface>
           )
         )}
       </div>
 
-      {restSeconds > 0 && (
-        <div
-          aria-modal="true"
-          role="dialog"
-          className="fixed inset-0 z-40 grid place-items-center bg-black/75 p-4 backdrop-blur-sm"
+      <Dialog open={restSeconds > 0}>
+        <DialogContent
+          showCloseButton={false}
+          className="bg-(--profile-panel) p-6 text-center text-white sm:max-w-md"
+          onEscapeKeyDown={(event) => event.preventDefault()}
+          onPointerDownOutside={(event) => event.preventDefault()}
         >
-          <div className="panel w-full max-w-md p-6 text-center shadow-2xl">
+          <DialogHeader>
             <p className="eyebrow">Recovery</p>
-            <h2 className="mt-3 text-2xl font-semibold">
+            <DialogTitle className="mt-3 text-2xl font-semibold">
               Rest before your next set
-            </h2>
+            </DialogTitle>
+            <DialogDescription className="sr-only">
+              Rest timer before the next set unlocks.
+            </DialogDescription>
+          </DialogHeader>
             <p className="mt-6 font-mono text-6xl font-semibold tabular-nums">
               {formatTimer(restSeconds)}
             </p>
@@ -357,44 +385,44 @@ export function WorkoutSessionScreen({
               The next set will unlock when the timer ends.
             </p>
             <div className="mt-7 grid grid-cols-2 gap-3">
-              <button className="muted-button" onClick={() => adjustRest(-15)}>
+              <ActionButton onClick={() => adjustRest(-15)}>
                 −15s
-              </button>
-              <button className="muted-button" onClick={() => adjustRest(15)}>
+              </ActionButton>
+              <ActionButton onClick={() => adjustRest(15)}>
                 +15s
-              </button>
+              </ActionButton>
             </div>
-            <button className="primary-button mt-3" onClick={skipRest}>
+            <ActionButton tone="primary" className="mt-3" onClick={skipRest}>
               Skip Rest
-            </button>
-          </div>
-        </div>
-      )}
+            </ActionButton>
+        </DialogContent>
+      </Dialog>
 
-      {showSkipConfirmation && currentExercise && (
-        <div className="fixed inset-0 z-30 grid place-items-center bg-black/70 p-4">
-          <div className="panel w-full max-w-md p-5">
-            <h2 className="text-xl font-semibold">
+      <AlertDialog
+        open={showSkipConfirmation && Boolean(currentExercise)}
+        onOpenChange={setShowSkipConfirmation}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
               Are you sure you want to skip this exercise?
-            </h2>
-            <p className="mt-2 text-sm leading-6 text-slate-400">
-              {currentExercise.exerciseName} will be recorded as skipped in this
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {currentExercise?.exerciseName} will be recorded as skipped in this
               workout session.
-            </p>
-            <div className="mt-5 grid grid-cols-2 gap-3">
-              <button
-                className="muted-button"
-                onClick={() => setShowSkipConfirmation(false)}
-              >
-                No
-              </button>
-              <button className="danger-button" onClick={skipExercise}>
-                Yes, skip
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep exercise</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-white"
+              onClick={skipExercise}
+            >
+              Skip exercise
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </PageShell>
   );
 }

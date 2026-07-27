@@ -2,7 +2,12 @@
 
 import { FormEvent, useLayoutEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { PageShell, EmptyState } from "@/app/_components/ui";
+import { SlidersHorizontal } from "lucide-react";
+import {
+  PageShell,
+  EmptyState,
+  getProfileThemeStyle,
+} from "@/app/_components/ui";
 import {
   Id,
   RepTarget,
@@ -12,6 +17,24 @@ import {
 import { useKinEthicData } from "@/lib/kinethic/hooks";
 import { newWorkoutExercise, repository } from "@/lib/kinethic/repository";
 import { ExercisePicker } from "@/features/exercises/exercise-picker";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  ActionButton,
+  AppInput,
+  AppTextarea,
+  Surface,
+} from "@/components/kinethic-ui";
 
 export function WorkoutEditor({
   profileId,
@@ -34,8 +57,8 @@ export function WorkoutEditor({
         "weight_reps",
     })) ?? [],
   );
-  const [expandedExerciseIds, setExpandedExerciseIds] = useState<Set<Id>>(
-    () => new Set(existing?.exercises[0] ? [existing.exercises[0].id] : []),
+  const [openExerciseId, setOpenExerciseId] = useState<Id | null>(
+    existing?.exercises[0]?.id ?? null,
   );
   const [picker, setPicker] = useState(false);
   const [draggedExerciseId, setDraggedExerciseId] = useState<Id | null>(null);
@@ -90,7 +113,7 @@ export function WorkoutEditor({
     }
 
     previousCardPositions.current = nextPositions;
-  }, [items, expandedExerciseIds]);
+  }, [items]);
   if (
     !profile ||
     (workoutId && (!existing || existing.profileId !== profileId))
@@ -112,30 +135,12 @@ export function WorkoutEditor({
     const lastNewItem = newItems.at(-1);
 
     setItems((current) => [...current, ...newItems]);
-    setExpandedExerciseIds(new Set(lastNewItem ? [lastNewItem.id] : []));
+    setOpenExerciseId(lastNewItem?.id ?? null);
     setPicker(false);
-  };
-  const toggleExercise = (exerciseId: Id) => {
-    setExpandedExerciseIds((current) => {
-      const next = new Set(current);
-
-      if (next.has(exerciseId)) {
-        next.delete(exerciseId);
-      } else {
-        next.add(exerciseId);
-      }
-
-      return next;
-    });
   };
   const removeExercise = (exerciseId: Id) => {
     setItems((current) => current.filter((item) => item.id !== exerciseId));
-    setExpandedExerciseIds((current) => {
-      const next = new Set(current);
-
-      next.delete(exerciseId);
-      return next;
-    });
+    setOpenExerciseId((current) => (current === exerciseId ? null : current));
   };
   const update = (index: number, patch: Partial<WorkoutExercise>) =>
     setItems((current) =>
@@ -206,17 +211,17 @@ export function WorkoutEditor({
         <aside className="lg:sticky lg:top-6">
           <label className="field">
             <span>Workout name</span>
-            <input
+            <AppInput
               autoFocus
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Upper A, Push, Full Body…"
+              placeholder="Iron Forge, Strength Circuit, Power Day…"
             />
           </label>
-          <div className="panel mt-5 hidden p-4 text-sm leading-6 text-slate-400 lg:block">
+          <Surface className="mt-5 hidden p-4 text-sm leading-6 text-slate-400 lg:block">
             Exercises are performed from top to bottom. Use the move controls to
             keep their order clear on every device.
-          </div>
+          </Surface>
         </aside>
         <div>
           <div className="mt-8 flex items-center justify-between lg:mt-0">
@@ -224,36 +229,35 @@ export function WorkoutEditor({
               <p className="eyebrow">Exercises</p>
               <h1 className="mt-1 text-xl font-semibold">Training order</h1>
             </div>
-            <button
+            <ActionButton
               type="button"
               onClick={() => setPicker(true)}
-              className="muted-button"
             >
               + Add
-            </button>
+            </ActionButton>
           </div>
           <div className="mt-4 space-y-4">
             {items.length === 0 && (
-              <div className="panel p-5 text-sm leading-6 text-slate-400">
+              <Surface className="p-5 text-sm leading-6 text-slate-400">
                 No exercises yet. Add an exercise and configure its training
                 targets.
-              </div>
+              </Surface>
             )}
             {items.map((item, index) => {
               const exercise = data.exercises[item.exerciseId];
               const reps = item.reps;
               const trackingType = item.trackingType;
-              const expanded = expandedExerciseIds.has(item.id);
+              const open = openExerciseId === item.id;
               const repSummary =
                 trackingType === undefined
                   ? "Choose a tracking type"
                   : trackingType === "duration"
                     ? `${item.durationSeconds ?? 0}s`
                     : reps.kind === "exact"
-                        ? `${reps.reps} reps`
-                        : `${reps.min}–${reps.max} reps`;
+                      ? `${reps.reps} reps`
+                      : `${reps.min}–${reps.max} reps`;
               return (
-                <section
+                <Surface
                   key={item.id}
                   data-exercise-card
                   ref={(element) => {
@@ -285,8 +289,15 @@ export function WorkoutEditor({
                   }}
                   className={`panel overflow-hidden transition ${draggedExerciseId === item.id ? "opacity-45" : ""} ${dragOverExerciseId === item.id && draggedExerciseId !== item.id ? "theme-accent-surface" : ""}`}
                 >
+                  <Popover
+                    open={open}
+                    onOpenChange={(nextOpen) =>
+                      setOpenExerciseId(nextOpen ? item.id : null)
+                    }
+                  >
                   <div className="flex items-start justify-between gap-3">
-                    <button
+                    <ActionButton
+                      tone="ghost"
                       type="button"
                       draggable
                       aria-label={`Drag to reorder ${exercise?.name ?? "exercise"}`}
@@ -314,13 +325,14 @@ export function WorkoutEditor({
                       className="theme-accent-text ml-2 mt-4 flex min-h-11 w-10 cursor-grab touch-none items-center justify-center rounded-xl text-xl active:cursor-grabbing"
                     >
                       ☰
-                    </button>
-                    <button
-                      type="button"
-                      aria-expanded={expanded}
-                      onClick={() => toggleExercise(item.id)}
-                      className="flex min-h-20 flex-1 items-center justify-between gap-4 p-4 text-left"
-                    >
+                    </ActionButton>
+                    <PopoverTrigger asChild>
+                      <ActionButton
+                        tone="ghost"
+                        type="button"
+                        aria-expanded={open}
+                        className="flex min-h-20 flex-1 items-center justify-between gap-4 p-4 text-left"
+                      >
                       <span>
                         <span className="block text-xs text-slate-500">
                           Exercise {index + 1}
@@ -328,58 +340,62 @@ export function WorkoutEditor({
                         <span className="mt-1 block font-semibold">
                           {exercise?.name ?? "Unavailable exercise"}
                         </span>
-                        {!expanded && (
-                          <span className="mt-1 block text-xs text-slate-400">
-                            {item.sets} sets · {repSummary} · {item.restSeconds}
-                            s rest
-                            {item.weight !== undefined
-                              ? ` · ${item.weight} ${item.weightUnit ?? "lb"}`
-                              : ""}
-                          </span>
-                        )}
+                        <span className="mt-1 block text-xs text-slate-400">
+                          {item.sets} sets · {repSummary} · {item.restSeconds}s
+                          rest
+                          {item.weight !== undefined
+                            ? ` · ${item.weight} ${item.weightUnit ?? "lb"}`
+                            : ""}
+                        </span>
                       </span>
-                      <span
-                        aria-hidden="true"
-                        className={`theme-accent-text text-xl transition-transform ${expanded ? "rotate-180" : ""}`}
-                      >
-                        ⌄
-                      </span>
-                    </button>
-                    <button
+                        <SlidersHorizontal
+                          aria-hidden="true"
+                          className="theme-accent-text h-5 w-5 shrink-0"
+                        />
+                      </ActionButton>
+                    </PopoverTrigger>
+                    <ActionButton
+                      tone="ghost"
                       type="button"
                       onClick={() => removeExercise(item.id)}
                       className="mr-4 mt-4 min-h-11 text-sm text-red-200"
                     >
                       Remove
-                    </button>
+                    </ActionButton>
                   </div>
-                  {expanded && (
-                    <div className="border-t border-white/10 p-4">
+                  <PopoverContent
+                    align="center"
+                    sideOffset={8}
+                    className="max-h-[min(80dvh,42rem)] w-[min(calc(100vw-2rem),32rem)] overflow-y-auto border border-(--profile-border) bg-(--profile-panel) p-4 text-white"
+                    style={getProfileThemeStyle(profile.accent)}
+                  >
+                    <div>
                       <div className="grid grid-cols-2 gap-3">
                         <label className="field col-span-2">
                           <span>Tracking type</span>
-                          <select
+                          <Select
                             value={trackingType ?? ""}
-                            onChange={(event) =>
-                              changeTrackingType(
-                                index,
-                                event.target.value as TrackingType,
-                              )
+                            onValueChange={(value) =>
+                              changeTrackingType(index, value as TrackingType)
                             }
                           >
-                            <option value="" disabled>
-                              Choose tracking type
-                            </option>
-                            <option value="weight_reps">Weight and reps</option>
-                            <option value="reps">Reps only</option>
-                            <option value="duration">Duration</option>
-                          </select>
+                            <SelectTrigger className="mt-2 min-h-12 w-full rounded-2xl border-(--profile-border) bg-(--profile-background)">
+                              <SelectValue placeholder="Choose tracking type" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="weight_reps">
+                                Weight and reps
+                              </SelectItem>
+                              <SelectItem value="reps">Reps only</SelectItem>
+                              <SelectItem value="duration">Duration</SelectItem>
+                            </SelectContent>
+                          </Select>
                         </label>
                         {trackingType && (
                           <>
                             <label className="field">
                               <span>Sets</span>
-                              <input
+                              <AppInput
                                 type="number"
                                 inputMode="numeric"
                                 min="1"
@@ -396,12 +412,12 @@ export function WorkoutEditor({
                               <>
                                 <label className="field">
                                   <span>Rep target</span>
-                                  <select
+                                  <Select
                                     value={reps.kind}
-                                    onChange={(event) =>
+                                    onValueChange={(value) =>
                                       update(index, {
                                         reps:
-                                          event.target.value === "exact"
+                                          value === "exact"
                                             ? { kind: "exact", reps: 10 }
                                             : {
                                                 kind: "range",
@@ -411,14 +427,23 @@ export function WorkoutEditor({
                                       })
                                     }
                                   >
-                                    <option value="range">Range</option>
-                                    <option value="exact">Exact</option>
-                                  </select>
+                                    <SelectTrigger className="mt-2 min-h-12 w-full rounded-2xl border-(--profile-border) bg-(--profile-background)">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="range">
+                                        Range
+                                      </SelectItem>
+                                      <SelectItem value="exact">
+                                        Exact
+                                      </SelectItem>
+                                    </SelectContent>
+                                  </Select>
                                 </label>
                                 {reps.kind === "exact" ? (
                                   <label className="field">
                                     <span>Reps</span>
-                                    <input
+                                    <AppInput
                                       type="number"
                                       inputMode="numeric"
                                       min="1"
@@ -444,7 +469,7 @@ export function WorkoutEditor({
                                   <>
                                     <label className="field">
                                       <span>Min reps</span>
-                                      <input
+                                      <AppInput
                                         type="number"
                                         inputMode="numeric"
                                         min="1"
@@ -471,7 +496,7 @@ export function WorkoutEditor({
                                     </label>
                                     <label className="field">
                                       <span>Max reps</span>
-                                      <input
+                                      <AppInput
                                         type="number"
                                         inputMode="numeric"
                                         min="1"
@@ -502,7 +527,7 @@ export function WorkoutEditor({
                             )}
                             <label className="field">
                               <span>Rest (seconds)</span>
-                              <input
+                              <AppInput
                                 type="number"
                                 inputMode="numeric"
                                 min="0"
@@ -522,7 +547,7 @@ export function WorkoutEditor({
                               <>
                                 <label className="field">
                                   <span>Weight (optional)</span>
-                                  <input
+                                  <AppInput
                                     type="number"
                                     inputMode="decimal"
                                     min="0"
@@ -539,26 +564,29 @@ export function WorkoutEditor({
                                 </label>
                                 <label className="field">
                                   <span>Unit</span>
-                                  <select
+                                  <Select
                                     value={item.weightUnit ?? "lb"}
-                                    onChange={(event) =>
+                                    onValueChange={(value) =>
                                       update(index, {
-                                        weightUnit: event.target.value as
-                                          | "lb"
-                                          | "kg",
+                                        weightUnit: value as "lb" | "kg",
                                       })
                                     }
                                   >
-                                    <option value="lb">lb</option>
-                                    <option value="kg">kg</option>
-                                  </select>
+                                    <SelectTrigger className="mt-2 min-h-12 w-full rounded-2xl border-(--profile-border) bg-(--profile-background)">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="lb">lb</SelectItem>
+                                      <SelectItem value="kg">kg</SelectItem>
+                                    </SelectContent>
+                                  </Select>
                                 </label>
                               </>
                             )}
                             {trackingType === "duration" && (
                               <label className="field">
                                 <span>Target duration (seconds)</span>
-                                <input
+                                <AppInput
                                   type="number"
                                   inputMode="numeric"
                                   min="1"
@@ -585,7 +613,7 @@ export function WorkoutEditor({
                       {trackingType && (
                         <label className="field mt-3">
                           <span>Notes (optional)</span>
-                          <textarea
+                          <AppTextarea
                             rows={2}
                             value={item.notes ?? ""}
                             onChange={(e) =>
@@ -598,22 +626,24 @@ export function WorkoutEditor({
                         </label>
                       )}
                     </div>
-                  )}
-                </section>
+                  </PopoverContent>
+                  </Popover>
+                </Surface>
               );
             })}
           </div>
         </div>
         <div className="fixed inset-x-0 bottom-0 border-t border-white/10 bg-[#080b12]/95 p-4 backdrop-blur">
           <div className="mx-auto max-w-5xl lg:flex lg:justify-end">
-            <button
+            <ActionButton
+              tone="primary"
               disabled={
                 !name.trim() || items.some((item) => !item.trackingType)
               }
-              className="primary-button lg:w-64"
+              className="lg:w-64"
             >
               Save workout
-            </button>
+            </ActionButton>
           </div>
         </div>
       </form>

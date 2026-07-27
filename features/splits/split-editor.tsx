@@ -13,6 +13,8 @@ import {
 } from "@/lib/kinethic/domain";
 import { useKinEthicData } from "@/lib/kinethic/hooks";
 import { repository } from "@/lib/kinethic/repository";
+import { ActionButton, AppInput, Surface } from "@/components/kinethic-ui";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 
 export function SplitEditor({
   profileId,
@@ -95,7 +97,7 @@ export function SplitEditor({
       <form onSubmit={(e) => submit(e, false)} className="pb-28 pt-6">
         <label className="field">
           <span>Split name</span>
-          <input
+          <AppInput
             autoFocus
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -116,7 +118,7 @@ export function SplitEditor({
               ? data.workouts[schedule[day]!]
               : undefined;
             return (
-              <div className="panel p-4" key={day}>
+              <Surface className="p-4" key={day}>
                 <div className="flex items-center justify-between gap-4">
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
@@ -133,65 +135,74 @@ export function SplitEditor({
                       </p>
                     )}
                   </div>
-                  <button
+                  <ActionButton
                     type="button"
                     onClick={() => setSelecting(day)}
-                    className="muted-button"
                   >
                     {workout ? "Replace" : "Assign"}
-                  </button>
+                  </ActionButton>
                 </div>
                 {schedule[day] && (
-                  <button
+                  <ActionButton
+                    tone="ghost"
                     type="button"
                     onClick={() => setSchedule((x) => ({ ...x, [day]: null }))}
                     className="mt-3 min-h-11 text-sm font-medium text-red-200"
                   >
                     Remove assignment
-                  </button>
+                  </ActionButton>
                 )}
-              </div>
+              </Surface>
             );
           })}
         </div>
         <div className="fixed inset-x-0 bottom-0 border-t border-white/10 bg-[#080b12]/95 p-4 backdrop-blur">
           <div className="mx-auto grid max-w-md grid-cols-2 gap-3">
-            <button
+            <ActionButton
               disabled={!name.trim()}
-              className="muted-button"
               type="submit"
             >
               Save
-            </button>
-            <button
+            </ActionButton>
+            <ActionButton
+              tone="primary"
               disabled={!name.trim()}
-              className="primary-button"
               type="button"
               onClick={(e) => submit(e as unknown as FormEvent, true)}
             >
               Save & activate
-            </button>
+            </ActionButton>
           </div>
         </div>
       </form>
-      {selecting && (
-        <div className="profile-overlay fixed inset-0 z-20 overflow-y-auto px-4 py-5 text-white">
-          <div className="mx-auto max-w-md">
+      <Sheet
+        open={Boolean(selecting)}
+        onOpenChange={(open) => !open && setSelecting(null)}
+      >
+        <SheetContent
+          side="bottom"
+          showCloseButton={false}
+          className="profile-overlay h-dvh max-h-dvh overflow-y-auto border-(--profile-border) bg-(--profile-background) px-4 py-5 text-white"
+        >
+          {selecting && (
+          <div className="mx-auto w-full max-w-md">
             <div className="flex items-center justify-between">
               <div>
                 <p className="eyebrow">{dayLabel(selecting)}</p>
-                <h2 className="mt-1 text-xl font-semibold">Assign workout</h2>
+                <SheetTitle className="mt-1 text-xl font-semibold text-white">
+                  Assign workout
+                </SheetTitle>
               </div>
-              <button
-                className="muted-button"
+              <ActionButton
                 onClick={() => setSelecting(null)}
               >
                 Close
-              </button>
+              </ActionButton>
             </div>
             <div className="mt-6 space-y-3">
               {workouts.map((workout) => (
-                <button
+                <ActionButton
+                  tone="ghost"
                   key={workout.id}
                   className="panel flex min-h-16 w-full items-center justify-between px-4 text-left"
                   onClick={() => choose(workout.id)}
@@ -203,41 +214,44 @@ export function SplitEditor({
                     </span>
                   </span>
                   <span>→</span>
-                </button>
+                </ActionButton>
               ))}
             </div>
-            <div className="panel mt-6 p-4">
+            <Surface className="mt-6 p-4">
               <h3 className="font-semibold">Create a new workout</h3>
               <p className="mt-1 text-sm text-slate-400">
                 Create it now, then add exercises from the workout library.
               </p>
               <label className="field mt-4">
                 <span>Workout name</span>
-                <input
+                <AppInput
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
-                  placeholder="Upper A"
+                  placeholder="Iron Forge"
                 />
               </label>
-              <button
+              <ActionButton
+                tone="primary"
                 disabled={!newName.trim()}
                 onClick={create}
-                className="primary-button mt-3"
+                className="mt-3"
               >
                 Create and assign
-              </button>
-            </div>
+              </ActionButton>
+            </Surface>
             {schedule[selecting] && (
-              <button
+              <ActionButton
+                tone="danger"
                 onClick={() => choose(null)}
-                className="danger-button mt-4 w-full"
+                className="mt-4 w-full"
               >
                 Make this a rest day
-              </button>
+              </ActionButton>
             )}
           </div>
-        </div>
-      )}
+          )}
+        </SheetContent>
+      </Sheet>
     </PageShell>
   );
 }

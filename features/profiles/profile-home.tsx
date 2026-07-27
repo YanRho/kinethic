@@ -3,11 +3,9 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ProfileBadge } from "@/app/_components/ui";
-import {
-  useKinEthicData,
-  useKinEthicHydrated,
-} from "@/lib/kinethic/hooks";
+import { useKinEthicData, useKinEthicHydrated } from "@/lib/kinethic/hooks";
 import { repository } from "@/lib/kinethic/repository";
+import { ActionButton, AppInput } from "@/components/kinethic-ui";
 
 const accents = [
   "from-cyan-300 via-blue-400 to-indigo-500",
@@ -55,7 +53,8 @@ export function ProfileHome() {
               </h1>
               <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3">
                 {profiles.map((profile) => (
-                  <button
+                  <ActionButton
+                    tone="ghost"
                     key={profile.id}
                     onClick={() => router.push(`/today/${profile.id}`)}
                     className="panel flex min-h-44 flex-col items-center justify-center p-4 transition hover:border-white/20 hover:bg-white/7"
@@ -68,9 +67,10 @@ export function ProfileHome() {
                           "Set up split")
                         : "Set up split"}
                     </span>
-                  </button>
+                  </ActionButton>
                 ))}
-                <button
+                <ActionButton
+                  tone="ghost"
                   onClick={() => {
                     setAccent(accents[profiles.length % accents.length]);
                     setCreating(true);
@@ -79,7 +79,7 @@ export function ProfileHome() {
                 >
                   <span className="text-4xl font-light">+</span>
                   <span className="mt-4 font-semibold">Add profile</span>
-                </button>
+                </ActionButton>
               </div>
             </div>
           ) : (
@@ -93,7 +93,7 @@ export function ProfileHome() {
               </p>
               <label className="field mt-6">
                 <span>Name</span>
-                <input
+                <AppInput
                   autoFocus
                   value={name}
                   onChange={(e) => setName(e.target.value)}
@@ -106,7 +106,8 @@ export function ProfileHome() {
                 </p>
                 <div className="mt-3 flex gap-3">
                   {accents.map((option) => (
-                    <button
+                    <ActionButton
+                      tone="ghost"
                       aria-label="Choose profile color"
                       type="button"
                       key={option}
@@ -117,17 +118,16 @@ export function ProfileHome() {
                 </div>
               </div>
               <div className="mt-7 grid gap-3">
-                <button className="primary-button" type="submit">
+                <ActionButton tone="primary" type="submit">
                   Create profile
-                </button>
+                </ActionButton>
                 {profiles.length > 0 && (
-                  <button
-                    className="muted-button"
+                  <ActionButton
                     type="button"
                     onClick={() => setCreating(false)}
                   >
                     Cancel
-                  </button>
+                  </ActionButton>
                 )}
               </div>
             </form>

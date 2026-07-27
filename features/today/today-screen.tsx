@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { House } from "lucide-react";
+import { useState } from "react";
+import { LogOut, Settings, Trash2 } from "lucide-react";
 import {
   Brand,
   EmptyState,
@@ -19,6 +20,25 @@ import {
 import { useKinEthicData } from "@/lib/kinethic/hooks";
 import { repository } from "@/lib/kinethic/repository";
 import { resolveToday } from "@/features/today/resolve-today";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { ActionButton, Surface } from "@/components/kinethic-ui";
 
 const repText = (
   reps:
@@ -40,6 +60,7 @@ function workoutExerciseText(
 export function TodayScreen({ profileId }: { profileId: string }) {
   const data = useKinEthicData();
   const router = useRouter();
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const profile = data.profiles[profileId];
   const experience = resolveToday(data, profileId);
   const today = localDay();
@@ -52,9 +73,9 @@ export function TodayScreen({ profileId }: { profileId: string }) {
             title="This profile is not on this device"
             body="Profiles are stored locally in each browser."
             action={
-              <Link href="/" className="primary-button">
-                Back to profiles
-              </Link>
+              <ActionButton asChild tone="primary">
+                <Link href="/">Back to profiles</Link>
+              </ActionButton>
             }
           />
         </div>
@@ -70,14 +91,8 @@ export function TodayScreen({ profileId }: { profileId: string }) {
       ? data.workouts[experience.workoutId]
       : undefined;
   const deleteProfile = () => {
-    if (
-      confirm(
-        `Delete ${profile.name} and all of this profile's local workout data?`,
-      )
-    ) {
-      repository.deleteProfile(profile.id);
-      router.push("/");
-    }
+    repository.deleteProfile(profile.id);
+    router.replace("/");
   };
   const startWorkout = () => {
     if (!workout || workout.exercises.length === 0) {
@@ -100,10 +115,40 @@ export function TodayScreen({ profileId }: { profileId: string }) {
           <Link href="/">
             <Brand />
           </Link>
-          <Link className="muted-button gap-2" href="/" replace>
-            <House aria-hidden="true" className="h-4 w-4" />
-            Switch profile
-          </Link>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <ActionButton
+                type="button"
+                className="h-12 w-12 p-0"
+                aria-label="Profile settings"
+                title="Profile settings"
+              >
+                <Settings aria-hidden="true" className="h-5 w-5" />
+              </ActionButton>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="end"
+              className="min-w-52 border border-(--profile-border) bg-(--profile-panel-strong) p-2 text-white"
+              style={getProfileThemeStyle(profile.accent)}
+            >
+              <DropdownMenuLabel>{profile.name}</DropdownMenuLabel>
+              <DropdownMenuSeparator className="bg-(--profile-border)" />
+              <DropdownMenuItem asChild className="min-h-11 px-3 py-2">
+                <Link href="/" replace>
+                  <LogOut aria-hidden="true" />
+                  Switch profile
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                variant="destructive"
+                className="min-h-11 px-3 py-2"
+                onSelect={() => setDeleteDialogOpen(true)}
+              >
+                <Trash2 aria-hidden="true" />
+                Delete profile
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </header>
         <section className="pt-10">
           <div className="flex items-center gap-4">
@@ -120,7 +165,7 @@ export function TodayScreen({ profileId }: { profileId: string }) {
               day: "numeric",
             }).format(new Date())}
           </p>
-          <div className="panel mt-4 overflow-hidden p-6 shadow-2xl shadow-black/30">
+          <Surface className="mt-4 overflow-hidden p-6 shadow-2xl shadow-black/30">
             {experience.kind === "workout" && workout ? (
               <>
                 <p className="eyebrow">Scheduled today · {split?.name}</p>
@@ -164,19 +209,20 @@ export function TodayScreen({ profileId }: { profileId: string }) {
                   })}
                 </div>
                 <div className="mt-6 grid gap-3 sm:grid-cols-2">
-                  <button
-                    className="primary-button"
+                  <ActionButton
+                    tone="primary"
                     disabled={workout.exercises.length === 0}
                     onClick={startWorkout}
                   >
                     Start Workout
-                  </button>
-                  <Link
-                    href={`/profiles/${profileId}/workouts/${workout.id}/edit`}
-                    className="muted-button"
-                  >
-                    Edit template
-                  </Link>
+                  </ActionButton>
+                  <ActionButton asChild>
+                    <Link
+                      href={`/profiles/${profileId}/workouts/${workout.id}/edit`}
+                    >
+                      Edit template
+                    </Link>
+                  </ActionButton>
                 </div>
               </>
             ) : experience.kind === "rest" ? (
@@ -205,15 +251,14 @@ export function TodayScreen({ profileId }: { profileId: string }) {
                     ? "Today references a workout that no longer exists. Edit the split to replace or remove it."
                     : "Create a workout split or choose one as active to see today’s training."}
                 </p>
-                <Link
-                  href={`/profiles/${profileId}/splits`}
-                  className="primary-button mt-6"
-                >
-                  Manage splits
-                </Link>
+                <ActionButton asChild tone="primary" className="mt-6">
+                  <Link href={`/profiles/${profileId}/splits`}>
+                    Manage splits
+                  </Link>
+                </ActionButton>
               </>
             )}
-          </div>
+          </Surface>
           {split && (
             <section className="mt-9">
               <div className="flex items-end justify-between">
@@ -253,27 +298,37 @@ export function TodayScreen({ profileId }: { profileId: string }) {
             </section>
           )}
           <nav className="mt-8 grid grid-cols-2 gap-3">
-            <Link
-              href={`/profiles/${profileId}/splits`}
-              className="muted-button"
-            >
-              Workout splits
-            </Link>
-            <Link
-              href={`/profiles/${profileId}/workouts`}
-              className="muted-button"
-            >
-              Workouts
-            </Link>
+            <ActionButton asChild>
+              <Link href={`/profiles/${profileId}/splits`}>
+                Workout splits
+              </Link>
+            </ActionButton>
+            <ActionButton asChild>
+              <Link href={`/profiles/${profileId}/workouts`}>Workouts</Link>
+            </ActionButton>
           </nav>
-          <button
-            onClick={deleteProfile}
-            className="mt-10 min-h-12 w-full text-sm text-red-200"
-          >
-            Delete local profile
-          </button>
         </section>
       </div>
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {profile.name}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently removes the profile and all of its local workout
+              data from this browser.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-white"
+              onClick={deleteProfile}
+            >
+              Delete profile
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </main>
   );
 }

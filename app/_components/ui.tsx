@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 import { Profile, initials } from "@/lib/kinethic/domain";
 import { BackButton, HomeButton } from "./back-button";
+import { Surface } from "@/components/kinethic-ui";
 
 export function Brand() {
   return (
@@ -163,11 +164,11 @@ export function EmptyState({
   action?: React.ReactNode;
 }) {
   return (
-    <div className="panel mt-8 p-6 text-center">
+    <Surface className="mt-8 p-6 text-center">
       <p className="eyebrow">{eyebrow}</p>
       <h1 className="mt-3 text-2xl font-semibold">{title}</h1>
       <p className="mt-3 text-sm leading-6 text-slate-400">{body}</p>
       {action && <div className="mt-6">{action}</div>}
-    </div>
+    </Surface>
   );
 }
