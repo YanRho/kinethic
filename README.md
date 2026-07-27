@@ -1,4 +1,6 @@
 # KinEthic
+![SpongeBob Working Out](https://media.tenor.com/ZFUJ2eZcm2IAAAAM/work-out-excercise.gif)
+
 ###### Train with intention, Track with Consistency
 
 KinEthic is a web-based fitness tracker designed to make workout logging simple and useful, replacing the old trusty notepad with a more structured way to track training and progress.
