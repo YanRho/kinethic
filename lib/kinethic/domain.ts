@@ -42,6 +42,9 @@ export type Equipment = (typeof equipmentOptions)[number];
 export const getExerciseKey = (name: string, equipment: Equipment): string =>
   `${name.trim().toLocaleLowerCase()}::${equipment.toLocaleLowerCase()}`;
 
+export const cleanName = (name: string) => name.trim().replace(/\s+/g, " ");
+export const nameKey = (name: string) => cleanName(name).toLocaleLowerCase();
+
 export type Profile = {
   id: Id;
   name: string;

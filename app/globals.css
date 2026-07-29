@@ -267,7 +267,7 @@ button {
 
   .max-w-5xl > div.mt-5.space-y-3 > *,
   .max-w-5xl > form > div.mt-5.space-y-3 > * {
-    margin-top: 0;
+    margin-block: 0;
   }
 }
 

@@ -10,6 +10,7 @@ import {
   WeeklySchedule,
   dayLabel,
   emptySchedule,
+  nameKey,
   weekdays,
 } from "@/lib/kinethic/domain";
 import { useKinEthicData } from "@/lib/kinethic/hooks";
@@ -52,6 +53,9 @@ export function SplitEditor({
   const workouts = Object.values(data.workouts).filter(
     (x) => x.profileId === profileId,
   );
+  const duplicateWorkoutName = workouts.some(
+    (workout) => nameKey(workout.name) === nameKey(newName),
+  );
   const choose = (workoutId: Id | null) => {
     if (selecting) {
       setSchedule((current) => ({
@@ -63,7 +67,7 @@ export function SplitEditor({
     setNewName("");
   };
   const create = () => {
-    if (!newName.trim()) {
+    if (!newName.trim() || duplicateWorkoutName) {
       return;
     }
     const workout = repository.saveWorkout({
@@ -71,7 +75,9 @@ export function SplitEditor({
       name: newName,
       exercises: [],
     });
-    choose(workout.id);
+    if (workout) {
+      choose(workout.id);
+    }
   };
   const submit = (event: FormEvent, activate: boolean) => {
     event.preventDefault();
@@ -247,11 +253,17 @@ export function SplitEditor({
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
                   placeholder="Iron Forge"
+                  aria-invalid={duplicateWorkoutName}
                 />
               </label>
+              {duplicateWorkoutName && (
+                <p className="mt-2 text-sm text-red-200">
+                  A workout with this name already exists.
+                </p>
+              )}
               <ActionButton
                 tone="primary"
-                disabled={!newName.trim()}
+                disabled={!newName.trim() || duplicateWorkoutName}
                 onClick={create}
                 className="mt-3"
               >

@@ -48,8 +48,8 @@ export function WorkoutListScreen({ profileId }: { profileId: string }) {
           </Surface>
         )}
         {workouts.map((workout) => (
-          <Surface className="p-3 sm:p-4" key={workout.id}>
-            <div className="flex items-center gap-3">
+          <Surface className="h-full min-h-20 p-3 sm:p-4" key={workout.id}>
+            <div className="flex h-full items-center gap-3">
               <div className="min-w-0 flex-1">
                 <h2 className="truncate font-semibold">{workout.name}</h2>
                 <p className="mt-1 text-xs text-slate-500">

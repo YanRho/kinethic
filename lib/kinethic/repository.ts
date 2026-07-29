@@ -17,6 +17,8 @@ import {
   emptySchedule,
   equipmentOptions,
   getExerciseKey,
+  cleanName,
+  nameKey,
   muscleGroupOptions,
   weekdays,
 } from "./domain";
@@ -59,7 +61,7 @@ export interface KinEthicRepository {
     profileId: Id;
     name: string;
     exercises: WorkoutExercise[];
-  }): Workout;
+  }): Workout | null;
   deleteWorkout(workoutId: Id): void;
   saveExercise(
     name: string,
@@ -484,11 +486,22 @@ class LocalStorageRepository implements KinEthicRepository {
   }) {
     const data = this.read();
     const existing = input.id ? data.workouts[input.id] : undefined;
+    const duplicate = Object.values(data.workouts).some(
+      (workout) =>
+        workout.profileId === input.profileId &&
+        workout.id !== existing?.id &&
+        nameKey(workout.name) === nameKey(input.name),
+    );
+
+    if (!cleanName(input.name) || duplicate) {
+      return null;
+    }
+
     const stamp = now();
     const workout: Workout = {
       id: existing?.id ?? id(),
       profileId: input.profileId,
-      name: input.name.trim(),
+      name: cleanName(input.name),
       exercises: input.exercises,
       createdAt: existing?.createdAt ?? stamp,
       updatedAt: stamp,

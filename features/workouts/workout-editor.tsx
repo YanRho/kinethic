@@ -29,6 +29,7 @@ import {
   RepTarget,
   TrackingType,
   WorkoutExercise,
+  nameKey,
 } from "@/lib/kinethic/domain";
 import { useKinEthicData } from "@/lib/kinethic/hooks";
 import { newWorkoutExercise, repository } from "@/lib/kinethic/repository";
@@ -436,6 +437,12 @@ export function WorkoutEditor({
   const cardAnimations = useRef(new Map<Id, Animation>());
   const previousCardPositions = useRef(new Map<Id, DOMRect>());
   const lastReorderTargetId = useRef<Id | null>(null);
+  const duplicateWorkoutName = Object.values(data.workouts).some(
+    (workout) =>
+      workout.profileId === profileId &&
+      workout.id !== workoutId &&
+      nameKey(workout.name) === nameKey(name),
+  );
 
   useEffect(() => {
     if (workoutId) return;
@@ -566,16 +573,22 @@ export function WorkoutEditor({
   };
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    if (!name.trim() || items.some((item) => !item.trackingType)) {
+    if (
+      !name.trim() ||
+      duplicateWorkoutName ||
+      items.some((item) => !item.trackingType)
+    ) {
       return;
     }
-    repository.saveWorkout({
+    const saved = repository.saveWorkout({
       id: workoutId,
       profileId,
       name,
       exercises: items,
     });
-    router.replace(`/profiles/${profileId}/workouts`);
+    if (saved) {
+      router.replace(`/profiles/${profileId}/workouts`);
+    }
   };
   return (
     <PageShell
@@ -595,8 +608,14 @@ export function WorkoutEditor({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder={namePlaceholder}
+              aria-invalid={duplicateWorkoutName}
             />
           </label>
+          {duplicateWorkoutName && (
+            <p className="mt-2 text-sm text-red-200">
+              A workout with this name already exists.
+            </p>
+          )}
           <Surface className="mt-5 hidden p-4 text-sm leading-6 text-slate-400 lg:block">
             Exercises are performed from top to bottom. Use the move controls to
             keep their order clear on every device.
@@ -1120,7 +1139,9 @@ export function WorkoutEditor({
             <ActionButton
               tone="primary"
               disabled={
-                !name.trim() || items.some((item) => !item.trackingType)
+                !name.trim() ||
+                duplicateWorkoutName ||
+                items.some((item) => !item.trackingType)
               }
               className="lg:w-64"
             >
