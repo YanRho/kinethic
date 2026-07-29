@@ -30,7 +30,7 @@ export interface KinEthicRepository {
   createProfile(input: {
     name: string;
     accent: string;
-    age: number;
+    birthDate: string;
     gender: Gender;
     weightLb: number;
     heightIn: number;
@@ -39,7 +39,7 @@ export interface KinEthicRepository {
     profileId: Id,
     input: {
       name: string;
-      age: number;
+      birthDate: string;
       gender: Gender;
       weightLb: number;
       heightIn: number;
@@ -73,6 +73,7 @@ export interface KinEthicRepository {
   recordRecentExercises(profileId: Id, exerciseIds: Id[]): void;
   startWorkoutSession(profileId: Id, workoutId: Id): WorkoutSession | null;
   saveWorkoutSession(session: WorkoutSession): void;
+  discardWorkoutSession(sessionId: Id): boolean;
   finishWorkoutSession(sessionId: Id): WorkoutSession | null;
 }
 
@@ -164,7 +165,7 @@ function migrateLegacy(raw: string | null): KinEthicData {
 function sanitize(value: unknown): KinEthicData {
   if (
     !isRecord(value) ||
-    ![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15].includes(
+    ![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16].includes(
       Number(value.schemaVersion),
     )
   ) {
@@ -188,6 +189,17 @@ function sanitize(value: unknown): KinEthicData {
     for (const exercise of workout.exercises) {
       exercise.trackingType = normalizeTrackingType(exercise.trackingType);
     }
+  }
+  for (const profile of Object.values(data.profiles)) {
+    const legacy = profile as Profile & { age?: number };
+    if (
+      !profile.birthDate &&
+      Number.isInteger(legacy.age) &&
+      legacy.age! >= 0
+    ) {
+      profile.birthDate = `${new Date().getFullYear() - legacy.age!}-01-01`;
+    }
+    delete legacy.age;
   }
   for (const session of Object.values(data.workoutSessions)) {
     for (const exercise of session.exercises) {
@@ -344,7 +356,7 @@ class LocalStorageRepository implements KinEthicRepository {
   createProfile(input: {
     name: string;
     accent: string;
-    age: number;
+    birthDate: string;
     gender: Gender;
     weightLb: number;
     heightIn: number;
@@ -356,7 +368,7 @@ class LocalStorageRepository implements KinEthicRepository {
       id: profileId,
       name: input.name.trim(),
       accent: input.accent,
-      age: input.age,
+      birthDate: input.birthDate,
       gender: input.gender,
       weightLb: input.weightLb,
       heightIn: input.heightIn,
@@ -372,7 +384,7 @@ class LocalStorageRepository implements KinEthicRepository {
     profileId: Id,
     input: {
       name: string;
-      age: number;
+      birthDate: string;
       gender: Gender;
       weightLb: number;
       heightIn: number;
@@ -385,7 +397,7 @@ class LocalStorageRepository implements KinEthicRepository {
     const updated: Profile = {
       ...profile,
       name: input.name.trim(),
-      age: input.age,
+      birthDate: input.birthDate,
       gender: input.gender,
       weightLb: input.weightLb,
       heightIn: input.heightIn,
@@ -600,6 +612,19 @@ class LocalStorageRepository implements KinEthicRepository {
       return null;
     }
 
+    const activeSession = Object.values(data.workoutSessions)
+      .filter(
+        (session) =>
+          session.profileId === profileId &&
+          session.workoutId === workoutId &&
+          !session.completedAt,
+      )
+      .sort((a, b) => b.startedAt.localeCompare(a.startedAt))[0];
+
+    if (activeSession) {
+      return activeSession;
+    }
+
     const session: WorkoutSession = {
       id: id(),
       profileId,
@@ -647,6 +672,27 @@ class LocalStorageRepository implements KinEthicRepository {
     data.workoutSessions[session.id] = session;
     this.write(data);
   }
+  discardWorkoutSession(sessionId: Id) {
+    const data = this.read();
+    const session = data.workoutSessions[sessionId];
+
+    if (!session || session.completedAt) {
+      return false;
+    }
+
+    for (const candidate of Object.values(data.workoutSessions)) {
+      if (
+        candidate.profileId === session.profileId &&
+        candidate.workoutId === session.workoutId &&
+        !candidate.completedAt
+      ) {
+        delete data.workoutSessions[candidate.id];
+      }
+    }
+
+    this.write(data);
+    return true;
+  }
   finishWorkoutSession(sessionId: Id) {
     const data = this.read();
     const session = data.workoutSessions[sessionId];
@@ -655,12 +701,23 @@ class LocalStorageRepository implements KinEthicRepository {
       return null;
     }
 
-    const completedSession = {
-      ...session,
-      completedAt: now(),
-    };
+    const completedAt = now();
 
-    data.workoutSessions[sessionId] = completedSession;
+    for (const candidate of Object.values(data.workoutSessions)) {
+      if (
+        candidate.profileId === session.profileId &&
+        candidate.workoutId === session.workoutId &&
+        !candidate.completedAt
+      ) {
+        data.workoutSessions[candidate.id] = {
+          ...candidate,
+          completedAt,
+          restEndsAt: null,
+        };
+      }
+    }
+
+    const completedSession = data.workoutSessions[sessionId];
     this.write(data);
     return completedSession;
   }

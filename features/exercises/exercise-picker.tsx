@@ -411,7 +411,7 @@ export function ExercisePicker({
           )}
         </div>
 
-        <SheetFooter className="shrink-0 border-t border-(--profile-border) bg-(--profile-background) p-4 sm:px-6">
+        <SheetFooter className="safe-bottom shrink-0 border-t border-(--profile-border) bg-(--profile-background) px-4 pt-4 sm:px-6">
           <ActionButton
             tone="primary"
             type="button"
@@ -469,7 +469,7 @@ export function ExercisePicker({
               <legend className="text-sm font-medium text-slate-300">
                 Secondary muscle groups (optional)
               </legend>
-              <div className="mt-2 grid grid-cols-2 gap-2">
+              <div className="mt-2 grid grid-cols-1 gap-2 min-[360px]:grid-cols-2">
                 {muscleGroupOptions
                   .filter((muscleGroup) => muscleGroup !== customPrimaryMuscle)
                   .map((muscleGroup) => {
@@ -515,7 +515,7 @@ export function ExercisePicker({
                 </SelectContent>
               </Select>
             </label>
-            <div className="mt-5 grid grid-cols-2 gap-3">
+            <div className="mt-5 grid grid-cols-1 gap-3 min-[360px]:grid-cols-2">
               <ActionButton
                 type="button"
                 onClick={() => setCreatingCustom(false)}

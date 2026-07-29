@@ -1,36 +1,54 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# KinEthic
+![SpongeBob Working Out](https://media.tenor.com/ZFUJ2eZcm2IAAAAM/work-out-excercise.gif)
 
-## Getting Started
+###### Train with intention, Track with Consistency
 
-First, run the development server:
+KinEthic is a web-based fitness tracker designed to make workout logging simple and useful, replacing the old trusty notepad with a more structured way to track training and progress.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## Features
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+* Track workouts, exercises, sets, reps, and weight.
+* View workout history and previous performance.
+* Follow personalized workout splits for different profiles.
+* Track primary and secondary muscle groups for each exercise.
+* Create and manage custom exercises.
+* Encourage appropriate rest periods between sets.
+* Suggest progressive overload based on previous workout performance.
+* Track basic fitness metrics such as BMI.
+* Store all user and workout data locally in the browser.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Privacy
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+KinEthic currently uses local storage only. Workout history, profiles, custom exercises, and other fitness data remain on the user’s device and are not sent to or stored on an external server.
 
-## Learn More
+Because data is stored locally, clearing browser data or using KinEthic on another browser or device may result in workout history being unavailable.
 
-To learn more about Next.js, take a look at the following resources:
+## Tech Stack
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+* Next.js
+* React
+* TypeScript
+* Tailwind CSS
+* shadcn/ui
+* Browser Local Storage
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Status
 
-## Deploy on Vercel
+KinEthic is currently an MVP and is under active development.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Future improvements may include:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+* Body fat percentage tracking
+* Weight and body composition history
+* Progress and training analytics
+* Personal record tracking
+* Improved progressive overload recommendations
+* Additional workout insights
+
+# Disclaimer
+
+KinEthic is a personal project developed for personal use, learning, and experimentation with modern web development practices.
+
+The project was built with the assistance of AI coding agents, including Claude and Codex, as part of exploring AI-assisted software development. AI tools were used to assist with implementation, debugging, refactoring, and development workflows while the application’s requirements, architecture, features, and overall direction were guided and reviewed by the developer.
+
+KinEthic is not intended to provide professional medical, health, or fitness advice.

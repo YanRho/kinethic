@@ -10,6 +10,7 @@ import {
   formatPreviousPerformance,
   getExerciseRecommendation,
   getPreviousExercise,
+  wasExerciseSkippedLastTime,
 } from "./recommendations";
 import { ExerciseLogger } from "./exercise-loggers";
 import { ActionButton, Surface } from "@/components/kinethic-ui";
@@ -77,6 +78,7 @@ export function WorkoutSessionScreen({
     storedSession ? normalizeSession(storedSession) : null,
   );
   const [showSkipConfirmation, setShowSkipConfirmation] = useState(false);
+  const [showEndConfirmation, setShowEndConfirmation] = useState(false);
   const elapsedSeconds = useElapsedWorkoutSeconds(session?.startedAt ?? null);
   const restSeconds = useRestSeconds(session?.restEndsAt ?? null);
 
@@ -127,6 +129,9 @@ export function WorkoutSessionScreen({
   const recommendation = currentExercise
     ? getExerciseRecommendation(currentExercise, previousSessions)
     : null;
+  const skippedLastTime = currentExercise
+    ? wasExerciseSkippedLastTime(currentExercise, previousSessions)
+    : false;
 
   const saveSession = (nextSession: WorkoutSession) => {
     setSession(nextSession);
@@ -259,6 +264,12 @@ export function WorkoutSessionScreen({
     }
   };
 
+  const endWorkout = () => {
+    if (repository.discardWorkoutSession(session.id)) {
+      router.replace(`/today/${profileId}`);
+    }
+  };
+
   return (
     <PageShell
       backHref={`/today/${profileId}`}
@@ -268,25 +279,37 @@ export function WorkoutSessionScreen({
       profile={profile}
     >
       <div className="mx-auto max-w-3xl pb-28 pt-7">
-        <div className="flex items-end justify-between gap-4">
-          <div>
-            <p className="eyebrow">Workout in progress</p>
-            <h1 className="mt-2 text-2xl font-semibold">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-3xl border border-(--profile-border) bg-(--profile-panel) p-4 sm:gap-4 sm:p-5">
+          <div className="min-w-0 flex-1">
+            <p className="eyebrow">In progress</p>
+            <h1 className="mt-2 break-words text-xl font-semibold sm:text-2xl">
               {session.workoutName}
             </h1>
           </div>
-          <div className="text-right">
-            <p className="text-xs text-slate-400">Elapsed</p>
-            <p className="mt-1 font-mono text-2xl font-semibold tabular-nums">
-              {formatTimer(elapsedSeconds)}
-            </p>
+          <div className="flex items-center gap-3 sm:gap-4">
+            <ActionButton
+              tone="ghost"
+              type="button"
+              className="min-h-10 px-3 text-xs font-semibold text-red-200"
+              onClick={() => setShowEndConfirmation(true)}
+            >
+              End workout
+            </ActionButton>
+            <div className="text-right">
+              <p className="text-xs text-slate-400">Workout time</p>
+              <p className="mt-1 font-mono text-2xl font-semibold tabular-nums">
+                {formatTimer(elapsedSeconds)}
+              </p>
+            </div>
           </div>
         </div>
 
         {sessionComplete ? (
           <Surface className="mt-8 p-6 text-center">
             <p className="eyebrow">All exercises complete</p>
-            <h2 className="mt-3 text-3xl font-semibold">Workout complete</h2>
+            <h2 className="mt-3 text-2xl font-semibold sm:text-3xl">
+              Workout complete
+            </h2>
             <p className="mt-3 text-sm leading-6 text-slate-400">
               Finish to save this session to local workout history.
             </p>
@@ -300,31 +323,72 @@ export function WorkoutSessionScreen({
           </Surface>
         ) : (
           currentExercise && (
-            <Surface className="mt-8 p-4 sm:p-6">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-xs text-slate-400">
+            <Surface className="mt-4 p-4 sm:p-6">
+              <div className="flex items-start justify-between gap-3 sm:gap-4">
+                <div className="min-w-0">
+                  <p className="theme-accent-text text-xs">
                     Exercise {session.currentExerciseIndex + 1} of{" "}
                     {session.exercises.length}
                   </p>
-                  <h2 className="mt-2 text-2xl font-semibold">
+                  <h2 className="mt-2 break-words text-xl font-semibold sm:text-2xl">
                     {currentExercise.exerciseName}
                   </h2>
-                  <p className="mt-2 text-sm text-slate-400">
-                    Target {targetText(currentExercise)} ·{" "}
-                    {currentExercise.restSeconds}s rest
-                  </p>
                 </div>
-                <ActionButton
-                  tone="ghost"
-                  className="min-h-11 text-sm font-semibold text-red-200"
-                  onClick={() => setShowSkipConfirmation(true)}
-                >
-                  Skip
-                </ActionButton>
+                <div className="flex flex-col items-end gap-2">
+                  <span className="theme-accent-surface theme-accent-text rounded-full px-2.5 py-1 text-xs">
+                    Active
+                  </span>
+                  <ActionButton
+                    tone="ghost"
+                    className="min-h-9 px-2 text-xs font-semibold text-red-200"
+                    onClick={() => setShowSkipConfirmation(true)}
+                  >
+                    Skip
+                  </ActionButton>
+                </div>
               </div>
 
-              {previousExercise && (
+              <div className="mt-5 grid grid-cols-3 gap-2">
+                {[
+                  [
+                    "Set",
+                    `${currentExercise.sets.find((set) => !set.completedAt)?.setNumber ?? currentExercise.sets.length}/${currentExercise.sets.length}`,
+                  ],
+                  ["Target", targetText(currentExercise)],
+                  [
+                    "Rest",
+                    `${Math.floor(currentExercise.restSeconds / 60)
+                      .toString()
+                      .padStart(2, "0")}:${(currentExercise.restSeconds % 60)
+                      .toString()
+                      .padStart(2, "0")}`,
+                  ],
+                ].map(([label, value]) => (
+                  <div
+                    key={label}
+                    className="rounded-xl bg-black/20 px-2 py-3 text-center"
+                  >
+                    <p className="text-[10px] uppercase tracking-wider text-slate-500">
+                      {label}
+                    </p>
+                    <p className="mt-1 truncate text-sm font-semibold">{value}</p>
+                  </div>
+                ))}
+              </div>
+
+              {skippedLastTime && (
+                <div className="mt-5 rounded-2xl border border-amber-300/25 bg-amber-300/8 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-amber-200">
+                    Skipped last time
+                  </p>
+                  <p className="mt-2 text-sm leading-6 text-slate-300">
+                    You skipped this exercise in your previous completed
+                    workout.
+                  </p>
+                </div>
+              )}
+
+              {previousExercise && !skippedLastTime && (
                 <div className="mt-5 rounded-2xl border border-white/10 bg-black/15 p-4">
                   <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
                     Previous performance
@@ -335,7 +399,7 @@ export function WorkoutSessionScreen({
                 </div>
               )}
 
-              {recommendation && (
+              {recommendation && !skippedLastTime && (
                 <div className="theme-accent-surface mt-4 rounded-2xl border p-4 text-sm leading-6">
                   <span className="theme-accent-text font-semibold">
                     Today’s suggestion:
@@ -378,13 +442,13 @@ export function WorkoutSessionScreen({
               Rest timer before the next set unlocks.
             </DialogDescription>
           </DialogHeader>
-            <p className="mt-6 font-mono text-6xl font-semibold tabular-nums">
+            <p className="mt-6 font-mono text-5xl font-semibold tabular-nums sm:text-6xl">
               {formatTimer(restSeconds)}
             </p>
             <p className="mt-3 text-sm text-slate-400">
               The next set will unlock when the timer ends.
             </p>
-            <div className="mt-7 grid grid-cols-2 gap-3">
+            <div className="mt-7 grid grid-cols-2 gap-2 sm:gap-3">
               <ActionButton onClick={() => adjustRest(-15)}>
                 −15s
               </ActionButton>
@@ -419,6 +483,31 @@ export function WorkoutSessionScreen({
               onClick={skipExercise}
             >
               Skip exercise
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={showEndConfirmation}
+        onOpenChange={setShowEndConfirmation}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>End this workout?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This unfinished workout and its progress will be deleted. Only
+              completed workouts are kept in your history, and you cannot
+              resume this session afterward.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep training</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-white"
+              onClick={endWorkout}
+            >
+              End workout
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

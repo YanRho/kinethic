@@ -5,7 +5,7 @@ import { Surface } from "@/components/kinethic-ui";
 
 export function Brand() {
   return (
-    <span className="text-xl font-semibold tracking-tight">
+    <span className="font-heading text-xl font-semibold tracking-tight">
       Kin<span className="brand-accent">Ethic</span>
     </span>
   );
@@ -46,20 +46,20 @@ export function PageShell({
 }) {
   return (
     <main
-      className={`min-h-dvh bg-[#080b12] px-4 py-5 text-white sm:px-5 ${profile ? "profile-theme" : ""}`}
+      className={`safe-page min-h-dvh overflow-x-hidden bg-[#080b12] px-3 text-white sm:px-5 ${profile ? "profile-theme" : ""}`}
       style={profile ? getProfileThemeStyle(profile.accent) : undefined}
     >
-      <div className="mx-auto max-w-5xl">
+      <div className="mx-auto min-w-0 max-w-5xl">
         <header className="flex min-h-12 items-center justify-between gap-3">
           {backHref ? (
-            <div className="flex items-center gap-2">
+            <div className="flex shrink-0 items-center gap-2">
               <BackButton
                 fallbackHref={backHref}
                 confirmMessage={backConfirmMessage}
                 onBeforeBack={onBeforeBack}
               />
               <HomeButton
-                href={profile ? `/today/${profile.id}` : "/"}
+                href={profile ? `/today/${profile.id}` : "/profiles"}
                 confirmMessage={backConfirmMessage}
                 onBeforeHome={onBeforeBack}
               />

@@ -3,7 +3,14 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { LogOut, Settings, Trash2 } from "lucide-react";
+import {
+  Dumbbell,
+  LockKeyhole,
+  LogOut,
+  Settings,
+  TimerReset,
+  Trash2,
+} from "lucide-react";
 import {
   Brand,
   EmptyState,
@@ -11,9 +18,8 @@ import {
   getProfileThemeStyle,
 } from "@/app/_components/ui";
 import {
-  TrackingType,
   Gender,
-  WorkoutExercise,
+  ageFromBirthDate,
   dayLabel,
   localDay,
   weekdays,
@@ -46,6 +52,24 @@ import {
 } from "@/components/ui/alert-dialog";
 import { ActionButton, AppInput, Surface } from "@/components/kinethic-ui";
 import {
+  ResponsiveDoubleWheelField,
+  ResponsiveTripleWheelField,
+  ResponsiveWheelField,
+} from "@/components/responsive-wheel-picker";
+import {
+  birthDateParts,
+  birthDateFromParts,
+  birthYearWheelOptions,
+  dayWheelOptions,
+  feetWheelOptions,
+  formatBirthDate,
+  genderWheelOptions,
+  inchesWheelOptions,
+  includeCurrentWheelValue,
+  monthWheelOptions,
+  weightWheelOptions,
+} from "@/lib/kinethic/profile-wheel-options";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -66,13 +90,6 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 
-const repText = (
-  reps:
-    | { kind: "exact"; reps: number }
-    | { kind: "range"; min: number; max: number },
-) =>
-  reps.kind === "exact" ? `${reps.reps} reps` : `${reps.min}–${reps.max} reps`;
-
 const bmiGradient = (bmi: number) => {
   if (bmi < 18.5) return "from-sky-500 via-cyan-500 to-blue-600";
   if (bmi < 25) return "from-emerald-400 via-green-500 to-teal-600";
@@ -82,23 +99,13 @@ const bmiGradient = (bmi: number) => {
   return "from-fuchsia-600 via-purple-700 to-red-800";
 };
 
-function workoutExerciseText(
-  item: WorkoutExercise,
-  trackingType: TrackingType,
-) {
-  if (trackingType === "duration") {
-    return `${item.sets} sets · ${item.durationSeconds ?? 0}s · ${item.restSeconds}s rest`;
-  }
-
-  return `${item.sets} sets · ${repText(item.reps)} · ${item.restSeconds}s rest${trackingType === "weight_reps" && item.weight !== undefined ? ` · ${item.weight} ${item.weightUnit ?? "lb"}` : ""}`;
-}
 export function TodayScreen({ profileId }: { profileId: string }) {
   const data = useKinEthicData();
   const router = useRouter();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [profileDialogOpen, setProfileDialogOpen] = useState(false);
   const [editName, setEditName] = useState("");
-  const [editAge, setEditAge] = useState("");
+  const [editBirthDate, setEditBirthDate] = useState("");
   const [editGender, setEditGender] =
     useState<Gender>("prefer_not_to_say");
   const [editWeightLb, setEditWeightLb] = useState("");
@@ -117,7 +124,7 @@ export function TodayScreen({ profileId }: { profileId: string }) {
             body="Profiles are stored locally in each browser."
             action={
               <ActionButton asChild tone="primary">
-                <Link href="/">Back to profiles</Link>
+                <Link href="/profiles">Back to profiles</Link>
               </ActionButton>
             }
           />
@@ -133,13 +140,35 @@ export function TodayScreen({ profileId }: { profileId: string }) {
     experience.kind === "workout"
       ? data.workouts[experience.workoutId]
       : undefined;
+  const activeWorkoutSession = workout
+    ? Object.values(data.workoutSessions)
+        .filter(
+          (session) =>
+            session.profileId === profileId &&
+            session.workoutId === workout.id &&
+            !session.completedAt,
+        )
+        .sort((a, b) => b.startedAt.localeCompare(a.startedAt))[0]
+    : undefined;
+  const workoutInProgress = Boolean(activeWorkoutSession);
+  const currentWorkoutExerciseIndex = workout
+    ? Math.min(
+        activeWorkoutSession?.currentExerciseIndex ?? 0,
+        Math.max(0, workout.exercises.length - 1),
+      )
+    : 0;
+  const displayedWorkoutExercises = workout
+    ? workout.exercises
+        .map((item, index) => ({ item, index }))
+        .slice(currentWorkoutExerciseIndex)
+    : [];
   const deleteProfile = () => {
     repository.deleteProfile(profile.id);
-    router.replace("/");
+    router.replace("/profiles");
   };
   const openProfileEditor = () => {
     setEditName(profile.name);
-    setEditAge(profile.age?.toString() ?? "");
+    setEditBirthDate(profile.birthDate ?? "");
     setEditGender(profile.gender ?? "prefer_not_to_say");
     setEditWeightLb(profile.weightLb?.toString() ?? "");
     setEditHeightFeet(
@@ -151,19 +180,19 @@ export function TodayScreen({ profileId }: { profileId: string }) {
     setProfileDialogOpen(true);
   };
   const saveProfile = () => {
-    const age = Number(editAge);
+    const age = ageFromBirthDate(editBirthDate);
     const weightLb = Number(editWeightLb);
     const heightFeet = Number(editHeightFeet);
     const heightInches = Number(editHeightInches);
     const heightIn = heightFeet * 12 + heightInches;
     if (
       !editName.trim() ||
-      !Number.isInteger(age) ||
+      age === null ||
       age < 13 ||
       age > 120 ||
       !Number.isFinite(weightLb) ||
-      weightLb <= 0 ||
-      weightLb > 1500 ||
+      weightLb < 33 ||
+      weightLb > 1400 ||
       !Number.isInteger(heightFeet) ||
       heightFeet < 1 ||
       heightFeet > 8 ||
@@ -175,7 +204,7 @@ export function TodayScreen({ profileId }: { profileId: string }) {
     }
     repository.updateProfile(profile.id, {
       name: editName,
-      age,
+      birthDate: editBirthDate,
       gender: editGender,
       weightLb,
       heightIn,
@@ -186,11 +215,21 @@ export function TodayScreen({ profileId }: { profileId: string }) {
     profile.weightLb && profile.heightIn
       ? calculateBmi(profile.weightLb, profile.heightIn)
       : null;
+  const profileAge = profile.birthDate
+    ? ageFromBirthDate(profile.birthDate)
+    : null;
   const healthyWeightRange = profile.heightIn
     ? getHealthyWeightRange(profile.heightIn)
     : null;
   const startWorkout = () => {
     if (!workout || workout.exercises.length === 0) {
+      return;
+    }
+
+    if (activeWorkoutSession) {
+      router.push(
+        `/profiles/${profileId}/workout-sessions/${activeWorkoutSession.id}`,
+      );
       return;
     }
 
@@ -202,12 +241,12 @@ export function TodayScreen({ profileId }: { profileId: string }) {
   };
   return (
     <main
-      className="profile-theme min-h-dvh bg-[#080b12] px-4 py-5 text-white"
+      className="profile-theme safe-page min-h-dvh overflow-x-hidden bg-[#080b12] px-3 text-white sm:px-4"
       style={getProfileThemeStyle(profile.accent)}
     >
       <div className="mx-auto max-w-md">
         <header className="flex items-center justify-between">
-          <Link href="/">
+          <Link href="/profiles">
             <Brand />
           </Link>
           <DropdownMenu>
@@ -229,7 +268,7 @@ export function TodayScreen({ profileId }: { profileId: string }) {
               <DropdownMenuLabel>{profile.name}</DropdownMenuLabel>
               <DropdownMenuSeparator className="bg-(--profile-border)" />
               <DropdownMenuItem asChild className="min-h-11 px-3 py-2">
-                <Link href="/" replace>
+                <Link href="/profiles" replace>
                   <LogOut aria-hidden="true" />
                   Switch profile
                 </Link>
@@ -246,7 +285,7 @@ export function TodayScreen({ profileId }: { profileId: string }) {
           </DropdownMenu>
         </header>
         <section className="pt-10">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3 sm:gap-4">
             <ProfileBadge profile={profile} size="sm" />
             <div className="min-w-0 flex-1">
               <p className="text-sm text-slate-400">Welcome back,</p>
@@ -259,13 +298,13 @@ export function TodayScreen({ profileId }: { profileId: string }) {
                 >
                   {profile.name}
                 </button>
-                {bmi && profile.age !== undefined ? (
+                {bmi && profileAge !== null ? (
                   <Popover>
                     <PopoverTrigger asChild>
                       <button
                         type="button"
-                        className={`rounded-full bg-linear-to-r px-2.5 py-1 text-xs font-bold text-white shadow-sm ${profile.age >= 20 ? bmiGradient(bmi) : "from-indigo-500 via-violet-500 to-purple-600"}`}
-                        aria-label={`BMI ${bmi.toFixed(1)}${profile.age >= 20 ? `, ${getBmiCategory(bmi)}` : ""}`}
+                        className={`rounded-full bg-linear-to-r px-2.5 py-1 text-xs font-bold text-white shadow-sm ${profileAge >= 20 ? bmiGradient(bmi) : "from-indigo-500 via-violet-500 to-purple-600"}`}
+                        aria-label={`BMI ${bmi.toFixed(1)}${profileAge >= 20 ? `, ${getBmiCategory(bmi)}` : ""}`}
                       >
                         BMI {bmi.toFixed(1)}
                       </button>
@@ -276,11 +315,11 @@ export function TodayScreen({ profileId }: { profileId: string }) {
                       className="profile-theme w-[min(20rem,calc(100vw-2rem))] border border-(--profile-border) bg-(--profile-panel-strong) p-4 text-white"
                     >
                       <p className="font-semibold">
-                        {profile.age >= 20
+                        {profileAge >= 20
                           ? getBmiCategory(bmi)
                           : "Age-specific guidance"}
                       </p>
-                      {profile.age >= 20 && healthyWeightRange ? (
+                      {profileAge >= 20 && healthyWeightRange ? (
                         <p className="text-sm leading-6 text-slate-400">
                           The WHO healthy adult BMI range of 18.5–24.9 is about{" "}
                           {Math.round(healthyWeightRange.minLb)}–
@@ -326,48 +365,137 @@ export function TodayScreen({ profileId }: { profileId: string }) {
               day: "numeric",
             }).format(new Date())}
           </p>
-          <Surface className="mt-4 overflow-hidden p-6 shadow-2xl shadow-black/30">
+          <Surface className="mt-4 overflow-hidden p-3 shadow-2xl shadow-black/30 sm:p-5">
             {experience.kind === "workout" && workout ? (
               <>
-                <p className="eyebrow">Scheduled today · {split?.name}</p>
-                <h2 className="mt-4 text-3xl font-semibold">{workout.name}</h2>
-                <p className="mt-2 text-sm text-slate-400">
-                  {workout.exercises.length}{" "}
-                  {workout.exercises.length === 1 ? "exercise" : "exercises"}
-                </p>
-                <div className="mt-6 space-y-3">
-                  {workout.exercises.map((item, index) => {
-                    const exercise = data.exercises[item.exerciseId];
-                    const trackingType =
-                      item.trackingType ??
-                      exercise?.trackingType ??
-                      "weight_reps";
-                    return (
-                      <div
-                        key={item.id}
-                        className="rounded-2xl border border-white/10 bg-black/20 p-4"
-                      >
-                        <div className="flex gap-3">
-                          <span className="text-sm text-slate-500">
-                            {index + 1}
-                          </span>
-                          <div>
-                            <h3 className="font-semibold">
+                <div className="flex items-start justify-between gap-4 px-1 pb-4">
+                  <div className="min-w-0">
+                    <p className="eyebrow">Today · {split?.name}</p>
+                    <h2 className="mt-2 break-words text-xl font-semibold sm:text-2xl">
+                      {workout.name}
+                    </h2>
+                  </div>
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-(--profile-accent) text-(--profile-primary-text)">
+                    <Dumbbell className="h-5 w-5" aria-hidden="true" />
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  {displayedWorkoutExercises.map(
+                    ({ item, index }, displayIndex) => {
+                      const exercise = data.exercises[item.exerciseId];
+                      const trackingType =
+                        item.trackingType ??
+                        exercise?.trackingType ??
+                        "weight_reps";
+                      const target =
+                        trackingType === "duration"
+                          ? `${item.durationSeconds ?? 0}s`
+                          : item.reps.kind === "exact"
+                            ? `${item.reps.reps}`
+                            : `${item.reps.min}–${item.reps.max}`;
+                      const measure =
+                        trackingType === "weight_reps"
+                          ? item.weight !== undefined
+                            ? `${item.weight} ${item.weightUnit ?? "lb"}`
+                            : "—"
+                          : trackingType === "duration"
+                            ? "Timed"
+                            : "Reps";
+
+                      if (displayIndex > 0) {
+                        return (
+                          <div
+                            key={item.id}
+                            className="rounded-2xl border border-(--profile-border) bg-(--profile-panel-strong) px-4 py-3.5"
+                          >
+                          <div className="flex items-center gap-3">
+                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/5 text-xs text-slate-400">
+                              {String(index + 1).padStart(2, "0")}
+                            </span>
+                            <div className="min-w-0 flex-1">
+                              <h3 className="truncate text-sm font-semibold">
+                                {exercise?.name ?? "Unavailable exercise"}
+                              </h3>
+                              {item.notes && (
+                                <p className="mt-0.5 truncate text-xs text-slate-500">
+                                  {item.notes}
+                                </p>
+                              )}
+                            </div>
+                            <span className="shrink-0 text-xs text-slate-500">
+                              {item.sets} sets
+                            </span>
+                          </div>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div
+                          key={item.id}
+                          className="theme-accent-surface rounded-2xl border p-4"
+                        >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="theme-accent-text text-xs">
+                              Exercise {index + 1} of {workout.exercises.length}
+                            </p>
+                            <h3 className="mt-1 break-words font-semibold">
                               {exercise?.name ?? "Unavailable exercise"}
                             </h3>
-                            <p className="mt-1 text-sm text-slate-400">
-                              {workoutExerciseText(item, trackingType)}
-                            </p>
-                            {item.notes && (
-                              <p className="mt-2 text-sm leading-6 text-slate-500">
-                                {item.notes}
-                              </p>
-                            )}
                           </div>
+                          <span className="theme-accent-surface theme-accent-text shrink-0 rounded-full border-0 px-2.5 py-1 text-xs">
+                            {workoutInProgress ? "In progress" : "Up first"}
+                          </span>
                         </div>
-                      </div>
-                    );
-                  })}
+                        <div className="mt-5 grid grid-cols-3 gap-2">
+                          {[
+                            ["Sets", String(item.sets)],
+                            [
+                              trackingType === "weight_reps"
+                                ? "Weight"
+                                : "Mode",
+                              measure,
+                            ],
+                            ["Target", target],
+                          ].map(([label, value]) => (
+                            <div
+                              key={label}
+                              className="rounded-xl bg-black/20 px-2 py-3 text-center"
+                            >
+                              <p className="text-[10px] uppercase tracking-wider text-slate-500">
+                                {label}
+                              </p>
+                              <p className="mt-1 truncate text-sm font-semibold">
+                                {value}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="mt-4 flex items-center gap-3 rounded-xl border border-(--profile-border) px-3 py-2.5">
+                          <TimerReset
+                            className="theme-accent-text h-4 w-4"
+                            aria-hidden="true"
+                          />
+                          <span className="text-xs text-slate-400">Rest timer</span>
+                          <span className="ml-auto font-mono text-sm">
+                            {Math.floor(item.restSeconds / 60)
+                              .toString()
+                              .padStart(2, "0")}
+                            :{(item.restSeconds % 60)
+                              .toString()
+                              .padStart(2, "0")}
+                          </span>
+                        </div>
+                        {item.notes && (
+                          <p className="mt-3 text-xs leading-5 text-slate-500">
+                            {item.notes}
+                          </p>
+                        )}
+                        </div>
+                      );
+                    },
+                  )}
                 </div>
                 <div className="mt-6 grid gap-3 sm:grid-cols-2">
                   <ActionButton
@@ -375,15 +503,26 @@ export function TodayScreen({ profileId }: { profileId: string }) {
                     disabled={workout.exercises.length === 0}
                     onClick={startWorkout}
                   >
-                    Start Workout
+                    {workoutInProgress ? "Resume Workout" : "Start Workout"}
                   </ActionButton>
-                  <ActionButton asChild>
-                    <Link
-                      href={`/profiles/${profileId}/workouts/${workout.id}/edit`}
+                  {workoutInProgress ? (
+                    <ActionButton
+                      type="button"
+                      disabled
+                      title="Finish the active workout before editing its exercises"
                     >
-                      Edit template
-                    </Link>
-                  </ActionButton>
+                      <LockKeyhole className="mr-2 h-4 w-4" aria-hidden="true" />
+                      Edit exercises
+                    </ActionButton>
+                  ) : (
+                    <ActionButton asChild>
+                      <Link
+                        href={`/profiles/${profileId}/workouts/${workout.id}/edit`}
+                      >
+                        Edit exercises
+                      </Link>
+                    </ActionButton>
+                  )}
                 </div>
               </>
             ) : experience.kind === "rest" ? (
@@ -391,7 +530,9 @@ export function TodayScreen({ profileId }: { profileId: string }) {
                 <p className="eyebrow text-slate-400">
                   Recovery · {split?.name}
                 </p>
-                <h2 className="mt-4 text-3xl font-semibold">Rest day</h2>
+                <h2 className="mt-4 text-2xl font-semibold sm:text-3xl">
+                  Rest day
+                </h2>
                 <p className="mt-3 leading-7 text-slate-400">
                   No workout is assigned today. Rest, recover, or move however
                   feels good.
@@ -400,7 +541,7 @@ export function TodayScreen({ profileId }: { profileId: string }) {
             ) : (
               <>
                 <p className="eyebrow">Setup needed</p>
-                <h2 className="mt-4 text-3xl font-semibold">
+                <h2 className="mt-4 text-2xl font-semibold sm:text-3xl">
                   {experience.kind === "no-active-split"
                     ? "Choose an active split"
                     : experience.kind === "invalid-split"
@@ -422,10 +563,12 @@ export function TodayScreen({ profileId }: { profileId: string }) {
           </Surface>
           {split && (
             <section className="mt-9">
-              <div className="flex items-end justify-between">
-                <div>
+              <div className="flex items-end justify-between gap-3">
+                <div className="min-w-0">
                   <p className="text-sm text-slate-400">This week</p>
-                  <h2 className="mt-1 text-xl font-semibold">{split.name}</h2>
+                  <h2 className="mt-1 truncate text-xl font-semibold">
+                    {split.name}
+                  </h2>
                 </div>
                 <Link
                   className="theme-accent-text text-sm font-semibold"
@@ -442,13 +585,13 @@ export function TodayScreen({ profileId }: { profileId: string }) {
                   return (
                     <div
                       key={day}
-                      className={`flex min-h-14 items-center justify-between rounded-2xl border px-4 ${day === today ? "theme-accent-surface" : "border-white/10 bg-white/2.5"}`}
+                      className={`flex min-h-14 items-center justify-between gap-3 rounded-2xl border px-3 sm:px-4 ${day === today ? "theme-accent-surface" : "border-white/10 bg-white/2.5"}`}
                     >
                       <span className="text-sm font-medium">
                         {dayLabel(day)}
                       </span>
                       <span
-                        className={`text-sm ${assigned ? "text-slate-300" : "text-slate-600"}`}
+                        className={`min-w-0 truncate text-right text-sm ${assigned ? "text-slate-300" : "text-slate-600"}`}
                       >
                         {assigned?.name ?? "Rest"}
                       </span>
@@ -458,7 +601,7 @@ export function TodayScreen({ profileId }: { profileId: string }) {
               </div>
             </section>
           )}
-          <nav className="mt-8 grid grid-cols-2 gap-3">
+          <nav className="mt-8 grid grid-cols-1 gap-2 min-[360px]:grid-cols-2 sm:gap-3">
             <ActionButton asChild>
               <Link href={`/profiles/${profileId}/splits`}>
                 Workout splits
@@ -490,78 +633,132 @@ export function TodayScreen({ profileId }: { profileId: string }) {
           </label>
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="field">
-              <span>Age</span>
-              <AppInput
-                type="number"
-                min="13"
-                max="120"
-                inputMode="numeric"
-                value={editAge}
-                onChange={(event) => setEditAge(event.target.value)}
-              />
+              <span>Birthdate</span>
+              <ResponsiveTripleWheelField
+                title="Birthdate"
+                labels={["Month", "Day", "Year"]}
+                values={[
+                  birthDateParts(editBirthDate).month,
+                  birthDateParts(editBirthDate).day,
+                  birthDateParts(editBirthDate).year,
+                ]}
+                options={[
+                  monthWheelOptions,
+                  dayWheelOptions,
+                  birthYearWheelOptions,
+                ]}
+                displayValue={formatBirthDate(editBirthDate)}
+                onValueChange={(month, day, year) =>
+                  setEditBirthDate(birthDateFromParts(month, day, year))
+                }
+                style={getProfileThemeStyle(profile.accent)}
+              >
+                <AppInput
+                  type="date"
+                  value={editBirthDate}
+                  onChange={(event) => setEditBirthDate(event.target.value)}
+                />
+              </ResponsiveTripleWheelField>
             </label>
             <label className="field">
               <span>Gender</span>
-              <Select
+              <ResponsiveWheelField
+                title="Gender"
                 value={editGender}
+                options={genderWheelOptions}
                 onValueChange={(value) => setEditGender(value as Gender)}
+                style={getProfileThemeStyle(profile.accent)}
               >
-                <SelectTrigger className="mt-2 min-h-12 w-full rounded-2xl border-(--profile-border) bg-(--profile-background)">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="woman">Woman</SelectItem>
-                  <SelectItem value="man">Man</SelectItem>
-                  <SelectItem value="nonbinary">Non-binary</SelectItem>
-                  <SelectItem value="prefer_not_to_say">
-                    Prefer not to say
-                  </SelectItem>
-                </SelectContent>
-              </Select>
+                <Select
+                  value={editGender}
+                  onValueChange={(value) => setEditGender(value as Gender)}
+                >
+                  <SelectTrigger className="mt-2 min-h-12 w-full rounded-2xl border-(--profile-border) bg-(--profile-background)">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="woman">Woman</SelectItem>
+                    <SelectItem value="man">Man</SelectItem>
+                    <SelectItem value="nonbinary">Non-binary</SelectItem>
+                    <SelectItem value="prefer_not_to_say">
+                      Prefer not to say
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </ResponsiveWheelField>
             </label>
           </div>
           <label className="field">
             <span>Weight (lb)</span>
-            <AppInput
-              type="number"
-              min="1"
-              max="1500"
-              step="0.1"
-              inputMode="decimal"
+            <ResponsiveWheelField
+              title="Weight (lb)"
               value={editWeightLb}
-              onChange={(event) => setEditWeightLb(event.target.value)}
-            />
+              options={includeCurrentWheelValue(
+                weightWheelOptions,
+                editWeightLb,
+              )}
+              onValueChange={(value) => setEditWeightLb(String(value))}
+              style={getProfileThemeStyle(profile.accent)}
+            >
+              <AppInput
+                type="number"
+                min="33"
+                max="1400"
+                step="0.1"
+                inputMode="decimal"
+                value={editWeightLb}
+                onChange={(event) => setEditWeightLb(event.target.value)}
+              />
+            </ResponsiveWheelField>
           </label>
           <fieldset>
             <legend className="text-sm font-medium text-slate-300">
               Height
             </legend>
-            <div className="mt-2 grid grid-cols-2 gap-3">
-              <label className="field">
-                <span className="sr-only">Height in feet</span>
-                <AppInput
-                  type="number"
-                  min="1"
-                  max="8"
-                  inputMode="numeric"
-                  placeholder="Feet"
-                  value={editHeightFeet}
-                  onChange={(event) => setEditHeightFeet(event.target.value)}
-                />
-              </label>
-              <label className="field">
-                <span className="sr-only">Additional height in inches</span>
-                <AppInput
-                  type="number"
-                  min="0"
-                  max="11"
-                  inputMode="numeric"
-                  placeholder="Inches"
-                  value={editHeightInches}
-                  onChange={(event) => setEditHeightInches(event.target.value)}
-                />
-              </label>
-            </div>
+            <ResponsiveDoubleWheelField
+              title="Height"
+              leftLabel="Feet"
+              rightLabel="Inches"
+              leftValue={editHeightFeet}
+              rightValue={editHeightInches}
+              leftOptions={feetWheelOptions}
+              rightOptions={inchesWheelOptions}
+              displayValue={`${editHeightFeet} ft ${editHeightInches} in`}
+              onValueChange={(feet, inches) => {
+                setEditHeightFeet(feet);
+                setEditHeightInches(inches);
+              }}
+              style={getProfileThemeStyle(profile.accent)}
+            >
+              <div className="mt-2 grid grid-cols-1 gap-3 min-[360px]:grid-cols-2">
+                <label className="field">
+                  <span className="sr-only">Height in feet</span>
+                  <AppInput
+                    type="number"
+                    min="1"
+                    max="8"
+                    inputMode="numeric"
+                    placeholder="Feet"
+                    value={editHeightFeet}
+                    onChange={(event) => setEditHeightFeet(event.target.value)}
+                  />
+                </label>
+                <label className="field">
+                  <span className="sr-only">Additional height in inches</span>
+                  <AppInput
+                    type="number"
+                    min="0"
+                    max="11"
+                    inputMode="numeric"
+                    placeholder="Inches"
+                    value={editHeightInches}
+                    onChange={(event) =>
+                      setEditHeightInches(event.target.value)
+                    }
+                  />
+                </label>
+              </div>
+            </ResponsiveDoubleWheelField>
           </fieldset>
           <DialogFooter>
             <ActionButton type="button" onClick={() => setProfileDialogOpen(false)}>
