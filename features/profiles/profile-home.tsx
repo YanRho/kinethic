@@ -164,7 +164,7 @@ export function ProfileHome({ landingPage = false }: { landingPage?: boolean }) 
                     </a>
                   </div>
                   <div className="mt-7 flex flex-wrap gap-x-5 gap-y-2 text-xs text-slate-500 sm:text-sm">
-                    {["No account", "No subscription", "No cloud upload"].map(
+                    {["No account", "No cloud upload"].map(
                       (benefit) => (
                         <span key={benefit} className="flex items-center gap-2">
                           <Check
@@ -184,10 +184,10 @@ export function ProfileHome({ landingPage = false }: { landingPage?: boolean }) 
                     <div className="flex items-center justify-between px-1 pb-4">
                       <div>
                         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-300">
-                          Today
+                          Today · Push strength
                         </p>
-                        <p className="mt-1 font-heading text-xl font-semibold">
-                          Push strength
+                        <p className="mt-2 font-heading text-xl font-semibold">
+                          Push A
                         </p>
                       </div>
                       <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-cyan-300 text-slate-950">
@@ -201,13 +201,23 @@ export function ProfileHome({ landingPage = false }: { landingPage?: boolean }) 
                             <p className="text-xs text-cyan-200">Exercise 1 of 4</p>
                             <p className="mt-1 font-semibold">Barbell bench press</p>
                           </div>
-                          <span className="rounded-full bg-cyan-300/15 px-2.5 py-1 text-xs text-cyan-200">
-                            In progress
-                          </span>
+                          <div className="shrink-0">
+                            <span className="block rounded-full bg-cyan-300/15 px-2.5 py-1 text-center text-xs text-cyan-200">
+                              Paused
+                            </span>
+                            <div className="mt-1 text-right">
+                              <p className="text-[10px] uppercase tracking-wider text-slate-500">
+                                Workout time
+                              </p>
+                              <p className="mt-0.5 font-mono text-sm font-semibold tabular-nums">
+                                12:20
+                              </p>
+                            </div>
+                          </div>
                         </div>
                         <div className="mt-5 grid grid-cols-3 gap-2">
                           {[
-                            ["Set", "03"],
+                            ["Sets", "3"],
                             ["Weight", "185 lb"],
                             ["Target", "8–10"],
                           ].map(([label, value]) => (
@@ -239,7 +249,7 @@ export function ProfileHome({ landingPage = false }: { landingPage?: boolean }) 
                             key={exercise}
                             className="flex items-center gap-3 rounded-2xl border border-white/8 bg-white/3 px-4 py-3.5"
                           >
-                            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/5 text-xs text-slate-400">
+                            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/5 text-xs text-slate-400">
                               0{index + 2}
                             </span>
                             <span className="min-w-0 flex-1 truncate text-sm font-medium">
@@ -249,6 +259,18 @@ export function ProfileHome({ landingPage = false }: { landingPage?: boolean }) 
                           </div>
                         ),
                       )}
+                    </div>
+                    <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                      <div className="primary-button flex min-h-12 items-center justify-center rounded-2xl px-4 py-3 text-sm font-semibold">
+                        Resume Workout
+                      </div>
+                      <div className="muted-button opacity-50">
+                        <LockKeyhole
+                          className="mr-2 h-4 w-4"
+                          aria-hidden="true"
+                        />
+                        Edit exercises
+                      </div>
                     </div>
                   </div>
                 </div>
