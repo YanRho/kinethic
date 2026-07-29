@@ -23,6 +23,7 @@ import {
   weekdays,
 } from "./domain";
 import { builtInExercises } from "./exercise-catalog";
+import { getPersonalRecordWeight } from "./workout-history";
 
 export interface KinEthicRepository {
   getSnapshot(): string;
@@ -74,6 +75,8 @@ export interface KinEthicRepository {
   toggleFavoriteExercise(profileId: Id, exerciseId: Id): void;
   recordRecentExercises(profileId: Id, exerciseIds: Id[]): void;
   startWorkoutSession(profileId: Id, workoutId: Id): WorkoutSession | null;
+  pauseWorkoutSession(sessionId: Id): WorkoutSession | null;
+  resumeWorkoutSession(sessionId: Id): WorkoutSession | null;
   saveWorkoutSession(session: WorkoutSession): void;
   discardWorkoutSession(sessionId: Id): boolean;
   finishWorkoutSession(sessionId: Id): WorkoutSession | null;
@@ -638,39 +641,87 @@ class LocalStorageRepository implements KinEthicRepository {
       return activeSession;
     }
 
+    const previousSessions = Object.values(data.workoutSessions);
     const session: WorkoutSession = {
       id: id(),
       profileId,
       workoutId,
       workoutName: workout.name,
       startedAt: now(),
+      pausedAt: null,
+      accumulatedPausedSeconds: 0,
       completedAt: null,
       currentExerciseIndex: 0,
       restEndsAt: null,
-      exercises: workout.exercises.map((item) => ({
-        id: id(),
-        templateExerciseId: item.id,
-        exerciseId: item.exerciseId,
-        exerciseName:
-          data.exercises[item.exerciseId]?.name ?? "Unavailable exercise",
-        target: item.reps,
-        restSeconds: item.restSeconds,
-        plannedWeight: item.weight,
-        weightUnit: item.weightUnit ?? "lb",
-        notes: item.notes,
-        trackingType:
+      exercises: workout.exercises.map((item) => {
+        const trackingType =
           item.trackingType ??
           data.exercises[item.exerciseId]?.trackingType ??
-          "weight_reps",
-        targetDurationSeconds: item.durationSeconds,
-        sets: Array.from({ length: item.sets }, (_, index) => ({
-          setNumber: index + 1,
-          actualWeight: item.weight,
-        })),
-      })),
+          "weight_reps";
+        const workingWeight =
+          trackingType === "weight_reps"
+            ? (getPersonalRecordWeight(
+                previousSessions,
+                profileId,
+                item.exerciseId,
+                item.weightUnit ?? "lb",
+              ) ?? item.weight)
+            : undefined;
+
+        return {
+          id: id(),
+          templateExerciseId: item.id,
+          exerciseId: item.exerciseId,
+          exerciseName:
+            data.exercises[item.exerciseId]?.name ?? "Unavailable exercise",
+          target: item.reps,
+          restSeconds: item.restSeconds,
+          plannedWeight: item.weight,
+          weightUnit: item.weightUnit ?? "lb",
+          notes: item.notes,
+          trackingType,
+          targetDurationSeconds: item.durationSeconds,
+          sets: Array.from({ length: item.sets }, (_, index) => ({
+            setNumber: index + 1,
+            actualWeight: workingWeight,
+          })),
+        };
+      }),
     };
 
     data.workoutSessions[session.id] = session;
+    this.write(data);
+    return session;
+  }
+  pauseWorkoutSession(sessionId: Id) {
+    const data = this.read();
+    const session = data.workoutSessions[sessionId];
+
+    if (!session || session.completedAt || session.pausedAt) {
+      return session ?? null;
+    }
+
+    session.pausedAt = now();
+    data.workoutSessions[sessionId] = session;
+    this.write(data);
+    return session;
+  }
+  resumeWorkoutSession(sessionId: Id) {
+    const data = this.read();
+    const session = data.workoutSessions[sessionId];
+
+    if (!session || session.completedAt || !session.pausedAt) {
+      return session ?? null;
+    }
+
+    const pausedSeconds = Math.max(
+      0,
+      Math.floor((Date.now() - new Date(session.pausedAt).getTime()) / 1000),
+    );
+    session.accumulatedPausedSeconds =
+      (session.accumulatedPausedSeconds ?? 0) + pausedSeconds;
+    session.pausedAt = null;
+    data.workoutSessions[sessionId] = session;
     this.write(data);
     return session;
   }

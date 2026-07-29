@@ -79,8 +79,23 @@ export function WorkoutSessionScreen({
   );
   const [showSkipConfirmation, setShowSkipConfirmation] = useState(false);
   const [showEndConfirmation, setShowEndConfirmation] = useState(false);
-  const elapsedSeconds = useElapsedWorkoutSeconds(session?.startedAt ?? null);
+  const elapsedSeconds = useElapsedWorkoutSeconds(
+    session?.startedAt ?? null,
+    session?.pausedAt ?? null,
+    session?.accumulatedPausedSeconds ?? 0,
+  );
   const restSeconds = useRestSeconds(session?.restEndsAt ?? null);
+
+  useEffect(() => {
+    if (!sessionId) return;
+    const resumedSession = repository.resumeWorkoutSession(sessionId);
+    if (!resumedSession) return;
+    const update = window.setTimeout(
+      () => setSession(normalizeSession(resumedSession)),
+      0,
+    );
+    return () => window.clearTimeout(update);
+  }, [sessionId]);
 
   useEffect(() => {
     if (!session || session.completedAt) {
@@ -274,7 +289,10 @@ export function WorkoutSessionScreen({
     <PageShell
       backHref={`/today/${profileId}`}
       backConfirmMessage="Leave this workout? Your in-progress session is saved locally, but the workout will remain unfinished."
-      onBeforeBack={() => repository.saveWorkoutSession(session)}
+      onBeforeBack={() => {
+        repository.saveWorkoutSession(session);
+        repository.pauseWorkoutSession(session.id);
+      }}
       title={formatTimer(elapsedSeconds)}
       profile={profile}
     >
@@ -323,7 +341,7 @@ export function WorkoutSessionScreen({
           </Surface>
         ) : (
           currentExercise && (
-            <Surface className="mt-4 p-4 sm:p-6">
+            <Surface className="mt-4 p-3 sm:p-6">
               <div className="flex items-start justify-between gap-3 sm:gap-4">
                 <div className="min-w-0">
                   <p className="theme-accent-text text-xs">
@@ -466,20 +484,23 @@ export function WorkoutSessionScreen({
         open={showSkipConfirmation && Boolean(currentExercise)}
         onOpenChange={setShowSkipConfirmation}
       >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              Are you sure you want to skip this exercise?
+        <AlertDialogContent className="w-[calc(100%-2rem)] gap-5 border border-white/10 bg-[#10151d] p-5 shadow-2xl shadow-black/50">
+          <AlertDialogHeader className="gap-2 text-left sm:place-items-start">
+            <AlertDialogTitle className="text-lg font-semibold leading-6 text-white">
+              Skip {currentExercise?.exerciseName}?
             </AlertDialogTitle>
-            <AlertDialogDescription>
-              {currentExercise?.exerciseName} will be recorded as skipped in this
-              workout session.
+            <AlertDialogDescription className="text-left text-sm leading-6 text-slate-300">
+              This exercise will be marked as skipped for this workout. You’ll
+              move to the next exercise.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Keep exercise</AlertDialogCancel>
+          <AlertDialogFooter className="-mx-5 -mb-5 gap-2 border-white/10 bg-black/20 p-4">
+            <AlertDialogCancel className="h-11 border-white/15 bg-white/5 font-semibold text-white hover:bg-white/10 hover:text-white">
+              Keep exercise
+            </AlertDialogCancel>
             <AlertDialogAction
-              className="bg-destructive text-white"
+              variant="destructive"
+              className="h-11 border border-red-300/20 bg-red-400/15 font-semibold text-red-100 hover:bg-red-400/25"
               onClick={skipExercise}
             >
               Skip exercise

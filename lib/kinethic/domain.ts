@@ -136,6 +136,8 @@ export type WorkoutSession = {
   workoutId: Id;
   workoutName: string;
   startedAt: string;
+  pausedAt?: string | null;
+  accumulatedPausedSeconds?: number;
   completedAt: string | null;
   currentExerciseIndex: number;
   restEndsAt: string | null;

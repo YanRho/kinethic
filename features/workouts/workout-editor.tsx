@@ -1153,6 +1153,7 @@ export function WorkoutEditor({
       {picker && (
         <ExercisePicker
           profileId={profileId}
+          existingExerciseIds={items.map((item) => item.exerciseId)}
           onAdd={addExercises}
           onClose={() => setPicker(false)}
           onDelete={(exerciseId) =>

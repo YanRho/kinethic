@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Dumbbell,
   LockKeyhole,
@@ -26,6 +26,11 @@ import {
 } from "@/lib/kinethic/domain";
 import { useKinEthicData } from "@/lib/kinethic/hooks";
 import { repository } from "@/lib/kinethic/repository";
+import { getPersonalRecordWeight } from "@/lib/kinethic/workout-history";
+import {
+  formatTimer,
+  useElapsedWorkoutSeconds,
+} from "@/features/workout-sessions/use-session-timers";
 import {
   calculateBmi,
   getBmiCategory,
@@ -98,6 +103,39 @@ const bmiGradient = (bmi: number) => {
   if (bmi < 40) return "from-rose-500 via-red-600 to-red-800";
   return "from-fuchsia-600 via-purple-700 to-red-800";
 };
+
+function PausedWorkoutTime({
+  sessionId,
+  startedAt,
+  pausedAt,
+  accumulatedPausedSeconds,
+}: {
+  sessionId: string;
+  startedAt: string;
+  pausedAt?: string | null;
+  accumulatedPausedSeconds?: number;
+}) {
+  useEffect(() => {
+    repository.pauseWorkoutSession(sessionId);
+  }, [sessionId]);
+
+  const elapsedSeconds = useElapsedWorkoutSeconds(
+    startedAt,
+    pausedAt ?? null,
+    accumulatedPausedSeconds ?? 0,
+  );
+
+  return (
+    <div className="mt-1 text-right">
+      <p className="text-[10px] uppercase tracking-wider text-slate-500">
+        Workout time
+      </p>
+      <p className="mt-0.5 font-mono text-sm font-semibold tabular-nums">
+        {formatTimer(elapsedSeconds)}
+      </p>
+    </div>
+  );
+}
 
 export function TodayScreen({ profileId }: { profileId: string }) {
   const data = useKinEthicData();
@@ -227,6 +265,7 @@ export function TodayScreen({ profileId }: { profileId: string }) {
     }
 
     if (activeWorkoutSession) {
+      repository.resumeWorkoutSession(activeWorkoutSession.id);
       router.push(
         `/profiles/${profileId}/workout-sessions/${activeWorkoutSession.id}`,
       );
@@ -393,10 +432,20 @@ export function TodayScreen({ profileId }: { profileId: string }) {
                           : item.reps.kind === "exact"
                             ? `${item.reps.reps}`
                             : `${item.reps.min}–${item.reps.max}`;
+                      const personalRecordWeight =
+                        trackingType === "weight_reps"
+                          ? getPersonalRecordWeight(
+                              Object.values(data.workoutSessions),
+                              profileId,
+                              item.exerciseId,
+                              item.weightUnit ?? "lb",
+                            )
+                          : undefined;
                       const measure =
                         trackingType === "weight_reps"
-                          ? item.weight !== undefined
-                            ? `${item.weight} ${item.weightUnit ?? "lb"}`
+                          ? personalRecordWeight !== undefined ||
+                            item.weight !== undefined
+                            ? `${personalRecordWeight ?? item.weight} ${item.weightUnit ?? "lb"}`
                             : "—"
                           : trackingType === "duration"
                             ? "Timed"
@@ -444,9 +493,21 @@ export function TodayScreen({ profileId }: { profileId: string }) {
                               {exercise?.name ?? "Unavailable exercise"}
                             </h3>
                           </div>
-                          <span className="theme-accent-surface theme-accent-text shrink-0 rounded-full border-0 px-2.5 py-1 text-xs">
-                            {workoutInProgress ? "In progress" : "Up first"}
-                          </span>
+                          <div className="shrink-0">
+                            <span className="theme-accent-surface theme-accent-text block rounded-full border-0 px-2.5 py-1 text-center text-xs">
+                              {workoutInProgress ? "Paused" : "Up first"}
+                            </span>
+                            {activeWorkoutSession && (
+                              <PausedWorkoutTime
+                                sessionId={activeWorkoutSession.id}
+                                startedAt={activeWorkoutSession.startedAt}
+                                pausedAt={activeWorkoutSession.pausedAt}
+                                accumulatedPausedSeconds={
+                                  activeWorkoutSession.accumulatedPausedSeconds
+                                }
+                              />
+                            )}
+                          </div>
                         </div>
                         <div className="mt-5 grid grid-cols-3 gap-2">
                           {[

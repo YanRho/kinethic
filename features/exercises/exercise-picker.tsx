@@ -38,9 +38,16 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Command, CommandInput } from "@/components/ui/command";
+import {
+  MAX_EXERCISES_PER_PRIMARY_MUSCLE,
+  MAX_EXERCISES_PER_WORKOUT,
+  countPrimaryMuscles,
+  validateExerciseAddition,
+} from "@/lib/kinethic/workout-validation";
 
 type ExercisePickerProps = {
   profileId: Id;
+  existingExerciseIds: Id[];
   onAdd(exerciseIds: Id[]): void;
   onClose(): void;
   onDelete?(exerciseId: Id): void;
@@ -54,6 +61,7 @@ type ExerciseSectionProps = {
   onSelect(exerciseId: Id): void;
   onFavorite(exerciseId: Id): void;
   onDelete(exercise: ExerciseDefinition): void;
+  getUnavailableReason(exercise: ExerciseDefinition): string | null;
 };
 
 function ExerciseSection({
@@ -64,6 +72,7 @@ function ExerciseSection({
   onSelect,
   onFavorite,
   onDelete,
+  getUnavailableReason,
 }: ExerciseSectionProps) {
   if (exercises.length === 0) {
     return null;
@@ -77,10 +86,13 @@ function ExerciseSection({
           const selectionIndex = selectedIds.indexOf(exercise.id);
           const selected = selectionIndex >= 0;
           const favorite = favoriteIds.includes(exercise.id);
+          const unavailableReason = selected
+            ? null
+            : getUnavailableReason(exercise);
 
           return (
             <Surface
-              className={`flex min-h-18 flex-row items-center gap-2 p-2 ${selected ? "theme-accent-surface" : ""}`}
+              className={`flex min-h-18 flex-row items-center gap-2 p-2 ${selected ? "theme-accent-surface" : ""} ${unavailableReason ? "opacity-60" : ""}`}
               key={`${title}:${exercise.id}`}
             >
               <ActionButton
@@ -88,6 +100,8 @@ function ExerciseSection({
                 type="button"
                 className="flex min-w-0 flex-1 items-center gap-3 rounded-2xl p-2 text-left"
                 onClick={() => onSelect(exercise.id)}
+                disabled={Boolean(unavailableReason)}
+                title={unavailableReason ?? undefined}
               >
                 <span
                   className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border text-sm font-semibold ${selected ? "border-(--profile-accent) bg-(--profile-accent) text-(--profile-primary-text)" : "border-(--profile-border) text-slate-400"}`}
@@ -105,6 +119,11 @@ function ExerciseSection({
                       : ""}{" "}
                     · {exercise.equipment}
                   </span>
+                  {unavailableReason && (
+                    <span className="mt-1 block text-xs leading-5 text-amber-200">
+                      {unavailableReason}
+                    </span>
+                  )}
                 </span>
               </ActionButton>
               <ActionButton
@@ -147,6 +166,7 @@ function ExerciseSection({
 
 export function ExercisePicker({
   profileId,
+  existingExerciseIds,
   onAdd,
   onClose,
   onDelete,
@@ -160,6 +180,7 @@ export function ExercisePicker({
   );
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Id[]>([]);
+  const [limitMessage, setLimitMessage] = useState<string | null>(null);
   const [creatingCustom, setCreatingCustom] = useState(false);
   const [customName, setCustomName] = useState("");
   const [customPrimaryMuscle, setCustomPrimaryMuscle] = useState<MuscleGroup>(
@@ -182,6 +203,14 @@ export function ExercisePicker({
     favoriteExerciseIds: [],
     recentExerciseIds: [],
   };
+  const existingExercises = existingExerciseIds
+    .map((exerciseId) => data.exercises[exerciseId])
+    .filter((exercise): exercise is ExerciseDefinition => Boolean(exercise));
+  const selectedExercises = selectedIds
+    .map((exerciseId) => data.exercises[exerciseId])
+    .filter((exercise): exercise is ExerciseDefinition => Boolean(exercise));
+  const prospectiveExercises = [...existingExercises, ...selectedExercises];
+  const primaryCounts = countPrimaryMuscles(prospectiveExercises);
   const muscleGroups = ["All", ...muscleGroupOptions] as const;
   const equipmentTypes = ["All", ...equipmentOptions] as const;
   const filteredExercises = exercises.filter((exercise) => {
@@ -209,19 +238,49 @@ export function ExercisePicker({
     );
 
   const toggleSelection = (exerciseId: Id) => {
-    setSelectedIds((current) =>
-      current.includes(exerciseId)
-        ? current.filter((id) => id !== exerciseId)
-        : [...current, exerciseId],
+    if (selectedIds.includes(exerciseId)) {
+      setSelectedIds((current) =>
+        current.filter((id) => id !== exerciseId),
+      );
+      setLimitMessage(null);
+      return;
+    }
+
+    const exercise = data.exercises[exerciseId];
+    if (!exercise) return;
+    const validation = validateExerciseAddition(
+      prospectiveExercises,
+      exercise,
     );
+    if (!validation.allowed) {
+      setLimitMessage(validation.message);
+      return;
+    }
+
+    setSelectedIds((current) => [...current, exerciseId]);
+    setLimitMessage(null);
   };
   const addSelectedExercises = () => {
     if (selectedIds.length === 0) {
       return;
     }
 
-    repository.recordRecentExercises(profileId, selectedIds);
-    onAdd(selectedIds);
+    const acceptedIds: Id[] = [];
+    const acceptedExercises = [...existingExercises];
+    for (const exerciseId of selectedIds) {
+      const exercise = data.exercises[exerciseId];
+      if (!exercise) continue;
+      const validation = validateExerciseAddition(acceptedExercises, exercise);
+      if (!validation.allowed) {
+        setLimitMessage(validation.message);
+        return;
+      }
+      acceptedIds.push(exerciseId);
+      acceptedExercises.push(exercise);
+    }
+
+    repository.recordRecentExercises(profileId, acceptedIds);
+    onAdd(acceptedIds);
   };
   const deleteCustomExercise = (exercise: ExerciseDefinition) => {
     setSelectedIds((current) =>
@@ -250,9 +309,18 @@ export function ExercisePicker({
       customEquipment,
     );
 
-    setSelectedIds((current) =>
-      current.includes(exercise.id) ? current : [...current, exercise.id],
+    const validation = validateExerciseAddition(
+      prospectiveExercises,
+      exercise,
     );
+    if (validation.allowed) {
+      setSelectedIds((current) =>
+        current.includes(exercise.id) ? current : [...current, exercise.id],
+      );
+      setLimitMessage(null);
+    } else {
+      setLimitMessage(validation.message);
+    }
     setCreatingCustom(false);
     setCustomName("");
     setCustomPrimaryMuscle(muscleGroupOptions[0]);
@@ -266,6 +334,13 @@ export function ExercisePicker({
     onFavorite: (exerciseId: Id) =>
       repository.toggleFavoriteExercise(profileId, exerciseId),
     onDelete: deleteCustomExercise,
+    getUnavailableReason: (exercise: ExerciseDefinition) => {
+      const validation = validateExerciseAddition(
+        prospectiveExercises,
+        exercise,
+      );
+      return validation.allowed ? null : validation.message;
+    },
   };
 
   return (
@@ -301,6 +376,32 @@ export function ExercisePicker({
               aria-label="Search exercises"
             />
           </Command>
+          <div className="mt-3 flex flex-wrap gap-2 text-xs">
+            <span className="rounded-full border border-(--profile-border) px-3 py-1.5 font-semibold text-slate-300">
+              Exercises: {prospectiveExercises.length} /{" "}
+              {MAX_EXERCISES_PER_WORKOUT}
+            </span>
+            {muscleGroupOptions.map((muscleGroup) => {
+              const count = primaryCounts[muscleGroup] ?? 0;
+              return count > 0 ? (
+                <span
+                  key={muscleGroup}
+                  className={`rounded-full border px-3 py-1.5 font-semibold ${count >= MAX_EXERCISES_PER_PRIMARY_MUSCLE ? "border-amber-300/30 bg-amber-300/8 text-amber-200" : "border-(--profile-border) text-slate-400"}`}
+                >
+                  {muscleGroup}: {count} /{" "}
+                  {MAX_EXERCISES_PER_PRIMARY_MUSCLE}
+                </span>
+              ) : null;
+            })}
+          </div>
+          {limitMessage && (
+            <p
+              role="alert"
+              className="mt-3 rounded-xl border border-amber-300/25 bg-amber-300/8 px-3 py-2 text-sm leading-6 text-amber-100"
+            >
+              {limitMessage}
+            </p>
+          )}
         </SheetHeader>
 
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-6 sm:px-6">

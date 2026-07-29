@@ -32,9 +32,10 @@ function NumberInput({
   onChange(value?: number): void;
 }) {
   return (
-    <label className="field">
+    <label className="field text-xs sm:text-sm">
       <span>{label}</span>
       <AppInput
+        className="mt-1.5 min-h-11 rounded-xl px-3 py-2 text-base sm:mt-2 sm:min-h-12 sm:rounded-2xl sm:px-4 sm:py-3"
         disabled={disabled}
         inputMode={inputMode}
         min="0"
@@ -63,7 +64,7 @@ function SetContainer({
   const [editingSetNumber, setEditingSetNumber] = useState<number | null>(null);
 
   return (
-    <div className="mt-6 space-y-3">
+    <div className="mt-4 space-y-2 sm:mt-6 sm:space-y-3">
       {exercise.sets.map((set) => {
         const isComplete = Boolean(set.completedAt);
         const isNext = set.setNumber === nextSet?.setNumber;
@@ -75,11 +76,11 @@ function SetContainer({
 
         return (
           <div
-            className={`rounded-2xl border p-3 ${isNext ? "theme-accent-surface" : "border-white/10 bg-black/15"}`}
+            className={`rounded-xl border p-3 sm:rounded-2xl ${isNext ? "theme-accent-surface" : "border-white/10 bg-black/15"}`}
             key={set.setNumber}
           >
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="font-semibold">Set {set.setNumber}</p>
+              <p className="text-sm font-semibold">Set {set.setNumber}</p>
               {isComplete ? (
                 <div className="flex items-center gap-2">
                   {!isEditing && (
@@ -117,7 +118,7 @@ function SetContainer({
               ) : (
                 <ActionButton
                   tone="primary"
-                  className="w-auto"
+                  className="min-h-11 w-auto rounded-xl px-3 text-xs sm:min-h-12 sm:rounded-2xl sm:px-4 sm:text-sm"
                   disabled={!isNext || !isValid(set) || restSeconds > 0}
                   onClick={() => onCompleteSet(set.setNumber)}
                 >
@@ -125,7 +126,7 @@ function SetContainer({
                 </ActionButton>
               )}
             </div>
-            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <div className="mt-2 grid gap-2 sm:mt-3 sm:grid-cols-2 sm:gap-3">
               {children(set, inputsDisabled)}
             </div>
           </div>
@@ -143,9 +144,10 @@ function WeightRepsLogger(props: ExerciseLoggerProps) {
 
   return (
     <>
-      <label className="field mt-6 block max-w-xs">
+      <label className="field mt-4 block max-w-xs text-xs sm:mt-6 sm:text-sm">
         <span>Working weight ({props.exercise.weightUnit})</span>
         <AppInput
+          className="mt-1.5 min-h-11 rounded-xl px-3 py-2 text-base sm:mt-2 sm:min-h-12 sm:rounded-2xl sm:px-4 sm:py-3"
           inputMode="decimal"
           min="0"
           step="0.5"

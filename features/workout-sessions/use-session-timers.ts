@@ -6,12 +6,29 @@ function secondsBetween(now: number, target: number) {
   return Math.max(0, Math.ceil((target - now) / 1000));
 }
 
-export function useElapsedWorkoutSeconds(startedAt: string | null) {
+function elapsedBetween(
+  startedAtMs: number | null,
+  pausedAtMs: number | null,
+  accumulatedPausedSeconds: number,
+) {
+  return startedAtMs
+    ? Math.max(
+        0,
+        Math.floor(((pausedAtMs ?? Date.now()) - startedAtMs) / 1000) -
+          accumulatedPausedSeconds,
+      )
+    : 0;
+}
+
+export function useElapsedWorkoutSeconds(
+  startedAt: string | null,
+  pausedAt: string | null = null,
+  accumulatedPausedSeconds = 0,
+) {
   const startedAtMs = startedAt ? new Date(startedAt).getTime() : null;
+  const pausedAtMs = pausedAt ? new Date(pausedAt).getTime() : null;
   const [elapsedSeconds, setElapsedSeconds] = useState(() =>
-    startedAtMs
-      ? Math.max(0, Math.floor((Date.now() - startedAtMs) / 1000))
-      : 0,
+    elapsedBetween(startedAtMs, pausedAtMs, accumulatedPausedSeconds),
   );
 
   useEffect(() => {
@@ -19,16 +36,19 @@ export function useElapsedWorkoutSeconds(startedAt: string | null) {
       return;
     }
 
-    const update = () => {
+    const update = () =>
       setElapsedSeconds(
-        Math.max(0, Math.floor((Date.now() - startedAtMs) / 1000)),
+        elapsedBetween(startedAtMs, pausedAtMs, accumulatedPausedSeconds),
       );
-    };
+    if (pausedAtMs) {
+      update();
+      return;
+    }
     const interval = window.setInterval(update, 1000);
 
     update();
     return () => window.clearInterval(interval);
-  }, [startedAtMs]);
+  }, [startedAtMs, pausedAtMs, accumulatedPausedSeconds]);
 
   return startedAt ? elapsedSeconds : 0;
 }
