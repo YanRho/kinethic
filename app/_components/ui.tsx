@@ -59,7 +59,7 @@ export function PageShell({
                 onBeforeBack={onBeforeBack}
               />
               <HomeButton
-                href={profile ? `/today/${profile.id}` : "/"}
+                href={profile ? `/today/${profile.id}` : "/profiles"}
                 confirmMessage={backConfirmMessage}
                 onBeforeHome={onBeforeBack}
               />

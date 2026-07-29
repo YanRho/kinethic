@@ -73,6 +73,7 @@ export interface KinEthicRepository {
   recordRecentExercises(profileId: Id, exerciseIds: Id[]): void;
   startWorkoutSession(profileId: Id, workoutId: Id): WorkoutSession | null;
   saveWorkoutSession(session: WorkoutSession): void;
+  discardWorkoutSession(sessionId: Id): boolean;
   finishWorkoutSession(sessionId: Id): WorkoutSession | null;
 }
 
@@ -600,6 +601,19 @@ class LocalStorageRepository implements KinEthicRepository {
       return null;
     }
 
+    const activeSession = Object.values(data.workoutSessions)
+      .filter(
+        (session) =>
+          session.profileId === profileId &&
+          session.workoutId === workoutId &&
+          !session.completedAt,
+      )
+      .sort((a, b) => b.startedAt.localeCompare(a.startedAt))[0];
+
+    if (activeSession) {
+      return activeSession;
+    }
+
     const session: WorkoutSession = {
       id: id(),
       profileId,
@@ -647,6 +661,27 @@ class LocalStorageRepository implements KinEthicRepository {
     data.workoutSessions[session.id] = session;
     this.write(data);
   }
+  discardWorkoutSession(sessionId: Id) {
+    const data = this.read();
+    const session = data.workoutSessions[sessionId];
+
+    if (!session || session.completedAt) {
+      return false;
+    }
+
+    for (const candidate of Object.values(data.workoutSessions)) {
+      if (
+        candidate.profileId === session.profileId &&
+        candidate.workoutId === session.workoutId &&
+        !candidate.completedAt
+      ) {
+        delete data.workoutSessions[candidate.id];
+      }
+    }
+
+    this.write(data);
+    return true;
+  }
   finishWorkoutSession(sessionId: Id) {
     const data = this.read();
     const session = data.workoutSessions[sessionId];
@@ -655,12 +690,23 @@ class LocalStorageRepository implements KinEthicRepository {
       return null;
     }
 
-    const completedSession = {
-      ...session,
-      completedAt: now(),
-    };
+    const completedAt = now();
 
-    data.workoutSessions[sessionId] = completedSession;
+    for (const candidate of Object.values(data.workoutSessions)) {
+      if (
+        candidate.profileId === session.profileId &&
+        candidate.workoutId === session.workoutId &&
+        !candidate.completedAt
+      ) {
+        data.workoutSessions[candidate.id] = {
+          ...candidate,
+          completedAt,
+          restEndsAt: null,
+        };
+      }
+    }
+
+    const completedSession = data.workoutSessions[sessionId];
     this.write(data);
     return completedSession;
   }

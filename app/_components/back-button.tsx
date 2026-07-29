@@ -54,7 +54,7 @@ export function BackButton({
     <ActionButton
       type="button"
       className="touch-button gap-2"
-      onClick={navigateBack}
+      onClick={confirmMessage ? undefined : navigateBack}
     >
       <ArrowLeft aria-hidden="true" className="h-4 w-4" />
       Back
@@ -94,7 +94,7 @@ export function HomeButton({
     <ActionButton
       type="button"
       className="touch-button gap-2"
-      onClick={navigateHome}
+      onClick={confirmMessage ? undefined : navigateHome}
     >
       <House aria-hidden="true" className="h-4 w-4" />
       Home

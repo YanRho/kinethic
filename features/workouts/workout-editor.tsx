@@ -14,6 +14,12 @@ import {
 import { useRouter } from "next/navigation";
 import { GripVertical, SlidersHorizontal, X } from "lucide-react";
 import {
+  WheelPicker,
+  WheelPickerOption,
+  WheelPickerValue,
+  WheelPickerWrapper,
+} from "@ncdai/react-wheel-picker";
+import {
   PageShell,
   EmptyState,
   getProfileThemeStyle,
@@ -99,6 +105,223 @@ const getMobileEditorSnapshot = () =>
   window.matchMedia(mobileEditorQuery).matches;
 
 const getMobileEditorServerSnapshot = () => false;
+
+const numberOptions = (
+  start: number,
+  end: number,
+  step = 1,
+  format: (value: number) => ReactNode = (value) => value,
+): WheelPickerOption<number>[] =>
+  Array.from({ length: Math.floor((end - start) / step) + 1 }, (_, index) => {
+    const value = start + index * step;
+    return { value, label: format(value) };
+  });
+
+const trackingTypeOptions: WheelPickerOption<TrackingType>[] = [
+  { value: "weight_reps", label: "Weight and reps" },
+  { value: "reps", label: "Reps only" },
+  { value: "duration", label: "Duration" },
+];
+const initialTrackingTypeOptions: WheelPickerOption<TrackingType | "">[] = [
+  { value: "", label: "Choose tracking type" },
+  ...trackingTypeOptions,
+];
+const repTargetOptions: WheelPickerOption<RepTarget["kind"]>[] = [
+  { value: "range", label: "Range" },
+  { value: "exact", label: "Exact" },
+];
+const weightUnitOptions: WheelPickerOption<"lb" | "kg">[] = [
+  { value: "lb", label: "lb" },
+  { value: "kg", label: "kg" },
+];
+const setOptions = numberOptions(1, 20);
+const repOptions = numberOptions(1, 100);
+const minuteOptions = numberOptions(0, 10);
+const secondOptions = numberOptions(0, 59, 1, (seconds) =>
+  seconds.toString().padStart(2, "0"),
+);
+const formatRestTime = (seconds: number) => {
+  if (seconds === 0) return "No rest";
+  const minutes = Math.floor(seconds / 60);
+  const remainder = seconds % 60;
+  return minutes
+    ? `${minutes} min${remainder ? ` ${remainder} sec` : ""}`
+    : `${seconds} sec`;
+};
+
+const wheelClassNames = {
+  optionItem: "text-slate-500",
+  highlightWrapper:
+    "rounded-xl border-y border-cyan-300/20 bg-[#102238] text-lg text-white",
+  highlightItem: "font-semibold text-white",
+};
+
+function AdaptiveWheelControl<T extends WheelPickerValue>({
+  title,
+  value,
+  options,
+  onValueChange,
+  children,
+}: {
+  title: string;
+  value: T;
+  options: WheelPickerOption<T>[];
+  onValueChange: (value: T) => void;
+  children: ReactNode;
+}) {
+  const mobile = useContext(MobileEditorContext);
+  const [open, setOpen] = useState(false);
+  const [draftValue, setDraftValue] = useState(value);
+  const selectedOption = options.find((option) => option.value === value);
+
+  if (!mobile) return children;
+
+  return (
+    <Sheet
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (nextOpen) setDraftValue(value);
+        setOpen(nextOpen);
+      }}
+    >
+      <SheetTrigger asChild>
+        <button
+          type="button"
+          className="mt-2 flex min-h-12 w-full items-center justify-between rounded-2xl border border-(--profile-border) bg-(--profile-background) px-4 py-3 text-left text-base text-white outline-none transition active:scale-[0.99]"
+        >
+          <span>{selectedOption?.label ?? value}</span>
+          <span className="text-xs font-semibold text-(--profile-accent)">
+            Change
+          </span>
+        </button>
+      </SheetTrigger>
+      <SheetContent
+        side="bottom"
+        showCloseButton={false}
+        className="z-[70] gap-0 rounded-t-3xl border-white/10 bg-[#0c1929] text-white"
+      >
+        <SheetHeader className="flex-row items-center justify-between border-b border-white/10">
+          <ActionButton type="button" onClick={() => setOpen(false)}>
+            Cancel
+          </ActionButton>
+          <SheetTitle className="text-center text-white">{title}</SheetTitle>
+          <ActionButton
+            type="button"
+            tone="primary"
+            className="min-h-10 w-auto rounded-xl px-4 py-2 text-sm"
+            onClick={() => {
+              onValueChange(draftValue);
+              setOpen(false);
+            }}
+          >
+            Done
+          </ActionButton>
+        </SheetHeader>
+        <div className="px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3">
+          <WheelPickerWrapper className="h-56">
+            <WheelPicker
+              value={draftValue}
+              onValueChange={setDraftValue}
+              options={options}
+              visibleCount={20}
+              optionItemHeight={44}
+              classNames={wheelClassNames}
+            />
+          </WheelPickerWrapper>
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+function AdaptiveRestControl({
+  value,
+  onValueChange,
+  children,
+}: {
+  value: number;
+  onValueChange: (value: number) => void;
+  children: ReactNode;
+}) {
+  const mobile = useContext(MobileEditorContext);
+  const [open, setOpen] = useState(false);
+  const [minutes, setMinutes] = useState(Math.floor(value / 60));
+  const [seconds, setSeconds] = useState(value % 60);
+
+  if (!mobile) return children;
+
+  return (
+    <Sheet
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (nextOpen) {
+          setMinutes(Math.min(10, Math.floor(value / 60)));
+          setSeconds(value % 60);
+        }
+        setOpen(nextOpen);
+      }}
+    >
+      <SheetTrigger asChild>
+        <button
+          type="button"
+          className="mt-2 flex min-h-12 w-full items-center justify-between rounded-2xl border border-(--profile-border) bg-(--profile-background) px-4 py-3 text-left text-base text-white outline-none transition active:scale-[0.99]"
+        >
+          <span>{formatRestTime(value)}</span>
+          <span className="text-xs font-semibold text-(--profile-accent)">
+            Change
+          </span>
+        </button>
+      </SheetTrigger>
+      <SheetContent
+        side="bottom"
+        showCloseButton={false}
+        className="z-[70] gap-0 rounded-t-3xl border-white/10 bg-[#0c1929] text-white"
+      >
+        <SheetHeader className="flex-row items-center justify-between border-b border-white/10">
+          <ActionButton type="button" onClick={() => setOpen(false)}>
+            Cancel
+          </ActionButton>
+          <SheetTitle className="text-center text-white">Rest time</SheetTitle>
+          <ActionButton
+            type="button"
+            tone="primary"
+            className="min-h-10 w-auto rounded-xl px-4 py-2 text-sm"
+            onClick={() => {
+              onValueChange(minutes * 60 + seconds);
+              setOpen(false);
+            }}
+          >
+            Done
+          </ActionButton>
+        </SheetHeader>
+        <div className="px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3">
+          <div className="grid grid-cols-2 text-center text-xs font-semibold uppercase tracking-wider text-slate-500">
+            <span>Minutes</span>
+            <span>Seconds</span>
+          </div>
+          <WheelPickerWrapper className="mt-1 h-56">
+            <WheelPicker
+              value={minutes}
+              onValueChange={setMinutes}
+              options={minuteOptions}
+              visibleCount={20}
+              optionItemHeight={44}
+              classNames={wheelClassNames}
+            />
+            <WheelPicker
+              value={seconds}
+              onValueChange={setSeconds}
+              options={secondOptions}
+              visibleCount={20}
+              optionItemHeight={44}
+              classNames={wheelClassNames}
+            />
+          </WheelPickerWrapper>
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}
 
 function ExerciseSettingsRoot({
   open,
@@ -205,9 +428,7 @@ export function WorkoutEditor({
         "weight_reps",
     })) ?? [],
   );
-  const [openExerciseId, setOpenExerciseId] = useState<Id | null>(
-    existing?.exercises[0]?.id ?? null,
-  );
+  const [openExerciseId, setOpenExerciseId] = useState<Id | null>(null);
   const [picker, setPicker] = useState(false);
   const [draggedExerciseId, setDraggedExerciseId] = useState<Id | null>(null);
   const [dragOverExerciseId, setDragOverExerciseId] = useState<Id | null>(null);
@@ -277,7 +498,7 @@ export function WorkoutEditor({
     (workoutId && (!existing || existing.profileId !== profileId))
   )
     return (
-      <PageShell backHref="/">
+      <PageShell backHref="/profiles">
         <EmptyState
           eyebrow="Not found"
           title="Workout unavailable"
@@ -532,47 +753,73 @@ export function WorkoutEditor({
                       <div className="grid grid-cols-2 gap-3">
                         <label className="field col-span-2">
                           <span>Tracking type</span>
-                          <Select
+                          <AdaptiveWheelControl
+                            title="Tracking type"
                             value={trackingType ?? ""}
-                            onValueChange={(value) =>
-                              changeTrackingType(index, value as TrackingType)
+                            options={
+                              trackingType
+                                ? trackingTypeOptions
+                                : initialTrackingTypeOptions
                             }
+                            onValueChange={(value) => {
+                              if (value) {
+                                changeTrackingType(index, value);
+                              }
+                            }}
                           >
-                            <SelectTrigger className="mt-2 min-h-12 w-full rounded-2xl border-(--profile-border) bg-(--profile-background)">
-                              <SelectValue placeholder="Choose tracking type" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="weight_reps">
-                                Weight and reps
-                              </SelectItem>
-                              <SelectItem value="reps">Reps only</SelectItem>
-                              <SelectItem value="duration">Duration</SelectItem>
-                            </SelectContent>
-                          </Select>
+                            <Select
+                              value={trackingType ?? ""}
+                              onValueChange={(value) =>
+                                changeTrackingType(index, value as TrackingType)
+                              }
+                            >
+                              <SelectTrigger className="mt-2 min-h-12 w-full rounded-2xl border-(--profile-border) bg-(--profile-background)">
+                                <SelectValue placeholder="Choose tracking type" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="weight_reps">
+                                  Weight and reps
+                                </SelectItem>
+                                <SelectItem value="reps">Reps only</SelectItem>
+                                <SelectItem value="duration">Duration</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </AdaptiveWheelControl>
                         </label>
                         {trackingType && (
                           <div className="col-span-2 grid grid-cols-2 gap-3 animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
                             <label className="field">
                               <span>Sets</span>
-                              <AppInput
-                                type="number"
-                                inputMode="numeric"
-                                min="1"
+                              <AdaptiveWheelControl
+                                title="Sets"
                                 value={item.sets}
-                                onChange={(e) =>
-                                  update(index, {
-                                    sets: Math.max(1, Number(e.target.value)),
-                                  })
+                                options={setOptions}
+                                onValueChange={(sets) =>
+                                  update(index, { sets })
                                 }
-                              />
+                              >
+                                <AppInput
+                                  type="number"
+                                  inputMode="numeric"
+                                  min="1"
+                                  value={item.sets}
+                                  onChange={(e) =>
+                                    update(index, {
+                                      sets: Math.max(1, Number(e.target.value)),
+                                    })
+                                  }
+                                />
+                              </AdaptiveWheelControl>
                             </label>
                             {(trackingType === "weight_reps" ||
                               trackingType === "reps") && (
                               <>
                                 <label className="field">
                                   <span>Rep target</span>
-                                  <Select
+                                  <AdaptiveWheelControl
+                                    title="Rep target"
                                     value={reps.kind}
+                                    options={repTargetOptions}
                                     onValueChange={(value) =>
                                       update(index, {
                                         reps:
@@ -586,99 +833,157 @@ export function WorkoutEditor({
                                       })
                                     }
                                   >
-                                    <SelectTrigger className="mt-2 min-h-12 w-full rounded-2xl border-(--profile-border) bg-(--profile-background)">
-                                      <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="range">
-                                        Range
-                                      </SelectItem>
-                                      <SelectItem value="exact">
-                                        Exact
-                                      </SelectItem>
-                                    </SelectContent>
-                                  </Select>
+                                    <Select
+                                      value={reps.kind}
+                                      onValueChange={(value) =>
+                                        update(index, {
+                                          reps:
+                                            value === "exact"
+                                              ? { kind: "exact", reps: 10 }
+                                              : {
+                                                  kind: "range",
+                                                  min: 8,
+                                                  max: 12,
+                                                },
+                                        })
+                                      }
+                                    >
+                                      <SelectTrigger className="mt-2 min-h-12 w-full rounded-2xl border-(--profile-border) bg-(--profile-background)">
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="range">
+                                          Range
+                                        </SelectItem>
+                                        <SelectItem value="exact">
+                                          Exact
+                                        </SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </AdaptiveWheelControl>
                                 </label>
                                 {reps.kind === "exact" ? (
                                   <label className="field">
                                     <span>Reps</span>
-                                    <AppInput
-                                      type="number"
-                                      inputMode="numeric"
-                                      min="1"
-                                      value={reps.reps || ""}
-                                      onChange={(event) =>
+                                    <AdaptiveWheelControl
+                                      title="Reps"
+                                      value={Math.max(1, reps.reps)}
+                                      options={repOptions}
+                                      onValueChange={(value) =>
                                         update(index, {
                                           reps: {
                                             kind: "exact",
-                                            reps: Number(event.target.value),
+                                            reps: Number(value),
                                           },
                                         })
                                       }
-                                      onBlur={() => {
-                                        if (reps.reps < 1) {
+                                    >
+                                      <AppInput
+                                        type="number"
+                                        inputMode="numeric"
+                                        min="1"
+                                        value={reps.reps || ""}
+                                        onChange={(event) =>
                                           update(index, {
-                                            reps: { kind: "exact", reps: 1 },
-                                          });
+                                            reps: {
+                                              kind: "exact",
+                                              reps: Number(event.target.value),
+                                            },
+                                          })
                                         }
-                                      }}
-                                    />
+                                        onBlur={() => {
+                                          if (reps.reps < 1) {
+                                            update(index, {
+                                              reps: { kind: "exact", reps: 1 },
+                                            });
+                                          }
+                                        }}
+                                      />
+                                    </AdaptiveWheelControl>
                                   </label>
                                 ) : (
                                   <>
                                     <label className="field">
                                       <span>Min reps</span>
-                                      <AppInput
-                                        type="number"
-                                        inputMode="numeric"
-                                        min="1"
-                                        value={reps.min || ""}
-                                        onChange={(event) =>
+                                      <AdaptiveWheelControl
+                                        title="Minimum reps"
+                                        value={Math.max(1, reps.min)}
+                                        options={repOptions}
+                                        onValueChange={(value) =>
                                           update(index, {
                                             reps: {
                                               ...reps,
-                                              min: Number(event.target.value),
+                                              min: Number(value),
                                             } as RepTarget,
                                           })
                                         }
-                                        onBlur={() => {
-                                          if (reps.min < 1) {
+                                      >
+                                        <AppInput
+                                          type="number"
+                                          inputMode="numeric"
+                                          min="1"
+                                          value={reps.min || ""}
+                                          onChange={(event) =>
                                             update(index, {
                                               reps: {
                                                 ...reps,
-                                                min: 1,
+                                                min: Number(event.target.value),
                                               } as RepTarget,
-                                            });
+                                            })
                                           }
-                                        }}
-                                      />
+                                          onBlur={() => {
+                                            if (reps.min < 1) {
+                                              update(index, {
+                                                reps: {
+                                                  ...reps,
+                                                  min: 1,
+                                                } as RepTarget,
+                                              });
+                                            }
+                                          }}
+                                        />
+                                      </AdaptiveWheelControl>
                                     </label>
                                     <label className="field">
                                       <span>Max reps</span>
-                                      <AppInput
-                                        type="number"
-                                        inputMode="numeric"
-                                        min="1"
-                                        value={reps.max || ""}
-                                        onChange={(event) =>
+                                      <AdaptiveWheelControl
+                                        title="Maximum reps"
+                                        value={Math.max(1, reps.max)}
+                                        options={repOptions}
+                                        onValueChange={(value) =>
                                           update(index, {
                                             reps: {
                                               ...reps,
-                                              max: Number(event.target.value),
+                                              max: Number(value),
                                             } as RepTarget,
                                           })
                                         }
-                                        onBlur={() => {
-                                          if (reps.max < 1) {
+                                      >
+                                        <AppInput
+                                          type="number"
+                                          inputMode="numeric"
+                                          min="1"
+                                          value={reps.max || ""}
+                                          onChange={(event) =>
                                             update(index, {
                                               reps: {
                                                 ...reps,
-                                                max: 1,
+                                                max: Number(event.target.value),
                                               } as RepTarget,
-                                            });
+                                            })
                                           }
-                                        }}
-                                      />
+                                          onBlur={() => {
+                                            if (reps.max < 1) {
+                                              update(index, {
+                                                reps: {
+                                                  ...reps,
+                                                  max: 1,
+                                                } as RepTarget,
+                                              });
+                                            }
+                                          }}
+                                        />
+                                      </AdaptiveWheelControl>
                                     </label>
                                   </>
                                 )}
@@ -686,21 +991,28 @@ export function WorkoutEditor({
                             )}
                             <label className="field">
                               <span>Rest (seconds)</span>
-                              <AppInput
-                                type="number"
-                                inputMode="numeric"
-                                min="0"
-                                step="15"
+                              <AdaptiveRestControl
                                 value={item.restSeconds}
-                                onChange={(e) =>
-                                  update(index, {
-                                    restSeconds: Math.max(
-                                      0,
-                                      Number(e.target.value),
-                                    ),
-                                  })
+                                onValueChange={(restSeconds) =>
+                                  update(index, { restSeconds })
                                 }
-                              />
+                              >
+                                <AppInput
+                                  type="number"
+                                  inputMode="numeric"
+                                  min="0"
+                                  step="15"
+                                  value={item.restSeconds}
+                                  onChange={(e) =>
+                                    update(index, {
+                                      restSeconds: Math.max(
+                                        0,
+                                        Number(e.target.value),
+                                      ),
+                                    })
+                                  }
+                                />
+                              </AdaptiveRestControl>
                             </label>
                             {trackingType === "weight_reps" && (
                               <>
@@ -723,22 +1035,33 @@ export function WorkoutEditor({
                                 </label>
                                 <label className="field">
                                   <span>Unit</span>
-                                  <Select
+                                  <AdaptiveWheelControl
+                                    title="Weight unit"
                                     value={item.weightUnit ?? "lb"}
+                                    options={weightUnitOptions}
                                     onValueChange={(value) =>
                                       update(index, {
                                         weightUnit: value as "lb" | "kg",
                                       })
                                     }
                                   >
-                                    <SelectTrigger className="mt-2 min-h-12 w-full rounded-2xl border-(--profile-border) bg-(--profile-background)">
-                                      <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="lb">lb</SelectItem>
-                                      <SelectItem value="kg">kg</SelectItem>
-                                    </SelectContent>
-                                  </Select>
+                                    <Select
+                                      value={item.weightUnit ?? "lb"}
+                                      onValueChange={(value) =>
+                                        update(index, {
+                                          weightUnit: value as "lb" | "kg",
+                                        })
+                                      }
+                                    >
+                                      <SelectTrigger className="mt-2 min-h-12 w-full rounded-2xl border-(--profile-border) bg-(--profile-background)">
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="lb">lb</SelectItem>
+                                        <SelectItem value="kg">kg</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </AdaptiveWheelControl>
                                 </label>
                               </>
                             )}

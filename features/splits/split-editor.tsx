@@ -39,7 +39,7 @@ export function SplitEditor({
     (splitId && (!existing || existing.profileId !== profileId))
   ) {
     return (
-      <PageShell backHref="/">
+      <PageShell backHref="/profiles">
         <EmptyState
           eyebrow="Not found"
           title="Split unavailable"

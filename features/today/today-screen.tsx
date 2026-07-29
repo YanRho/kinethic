@@ -3,7 +3,14 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { LogOut, Settings, Trash2 } from "lucide-react";
+import {
+  Dumbbell,
+  LockKeyhole,
+  LogOut,
+  Settings,
+  TimerReset,
+  Trash2,
+} from "lucide-react";
 import {
   Brand,
   EmptyState,
@@ -11,9 +18,7 @@ import {
   getProfileThemeStyle,
 } from "@/app/_components/ui";
 import {
-  TrackingType,
   Gender,
-  WorkoutExercise,
   dayLabel,
   localDay,
   weekdays,
@@ -66,13 +71,6 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 
-const repText = (
-  reps:
-    | { kind: "exact"; reps: number }
-    | { kind: "range"; min: number; max: number },
-) =>
-  reps.kind === "exact" ? `${reps.reps} reps` : `${reps.min}–${reps.max} reps`;
-
 const bmiGradient = (bmi: number) => {
   if (bmi < 18.5) return "from-sky-500 via-cyan-500 to-blue-600";
   if (bmi < 25) return "from-emerald-400 via-green-500 to-teal-600";
@@ -82,16 +80,6 @@ const bmiGradient = (bmi: number) => {
   return "from-fuchsia-600 via-purple-700 to-red-800";
 };
 
-function workoutExerciseText(
-  item: WorkoutExercise,
-  trackingType: TrackingType,
-) {
-  if (trackingType === "duration") {
-    return `${item.sets} sets · ${item.durationSeconds ?? 0}s · ${item.restSeconds}s rest`;
-  }
-
-  return `${item.sets} sets · ${repText(item.reps)} · ${item.restSeconds}s rest${trackingType === "weight_reps" && item.weight !== undefined ? ` · ${item.weight} ${item.weightUnit ?? "lb"}` : ""}`;
-}
 export function TodayScreen({ profileId }: { profileId: string }) {
   const data = useKinEthicData();
   const router = useRouter();
@@ -117,7 +105,7 @@ export function TodayScreen({ profileId }: { profileId: string }) {
             body="Profiles are stored locally in each browser."
             action={
               <ActionButton asChild tone="primary">
-                <Link href="/">Back to profiles</Link>
+                <Link href="/profiles">Back to profiles</Link>
               </ActionButton>
             }
           />
@@ -133,9 +121,31 @@ export function TodayScreen({ profileId }: { profileId: string }) {
     experience.kind === "workout"
       ? data.workouts[experience.workoutId]
       : undefined;
+  const activeWorkoutSession = workout
+    ? Object.values(data.workoutSessions)
+        .filter(
+          (session) =>
+            session.profileId === profileId &&
+            session.workoutId === workout.id &&
+            !session.completedAt,
+        )
+        .sort((a, b) => b.startedAt.localeCompare(a.startedAt))[0]
+    : undefined;
+  const workoutInProgress = Boolean(activeWorkoutSession);
+  const currentWorkoutExerciseIndex = workout
+    ? Math.min(
+        activeWorkoutSession?.currentExerciseIndex ?? 0,
+        Math.max(0, workout.exercises.length - 1),
+      )
+    : 0;
+  const displayedWorkoutExercises = workout
+    ? workout.exercises
+        .map((item, index) => ({ item, index }))
+        .slice(currentWorkoutExerciseIndex)
+    : [];
   const deleteProfile = () => {
     repository.deleteProfile(profile.id);
-    router.replace("/");
+    router.replace("/profiles");
   };
   const openProfileEditor = () => {
     setEditName(profile.name);
@@ -194,6 +204,13 @@ export function TodayScreen({ profileId }: { profileId: string }) {
       return;
     }
 
+    if (activeWorkoutSession) {
+      router.push(
+        `/profiles/${profileId}/workout-sessions/${activeWorkoutSession.id}`,
+      );
+      return;
+    }
+
     const session = repository.startWorkoutSession(profileId, workout.id);
 
     if (session) {
@@ -207,7 +224,7 @@ export function TodayScreen({ profileId }: { profileId: string }) {
     >
       <div className="mx-auto max-w-md">
         <header className="flex items-center justify-between">
-          <Link href="/">
+          <Link href="/profiles">
             <Brand />
           </Link>
           <DropdownMenu>
@@ -229,7 +246,7 @@ export function TodayScreen({ profileId }: { profileId: string }) {
               <DropdownMenuLabel>{profile.name}</DropdownMenuLabel>
               <DropdownMenuSeparator className="bg-(--profile-border)" />
               <DropdownMenuItem asChild className="min-h-11 px-3 py-2">
-                <Link href="/" replace>
+                <Link href="/profiles" replace>
                   <LogOut aria-hidden="true" />
                   Switch profile
                 </Link>
@@ -326,50 +343,137 @@ export function TodayScreen({ profileId }: { profileId: string }) {
               day: "numeric",
             }).format(new Date())}
           </p>
-          <Surface className="mt-4 overflow-hidden p-6 shadow-2xl shadow-black/30">
+          <Surface className="mt-4 overflow-hidden p-3 shadow-2xl shadow-black/30 sm:p-5">
             {experience.kind === "workout" && workout ? (
               <>
-                <p className="eyebrow">Scheduled today · {split?.name}</p>
-                <h2 className="mt-4 break-words text-2xl font-semibold sm:text-3xl">
-                  {workout.name}
-                </h2>
-                <p className="mt-2 text-sm text-slate-400">
-                  {workout.exercises.length}{" "}
-                  {workout.exercises.length === 1 ? "exercise" : "exercises"}
-                </p>
-                <div className="mt-6 space-y-3">
-                  {workout.exercises.map((item, index) => {
-                    const exercise = data.exercises[item.exerciseId];
-                    const trackingType =
-                      item.trackingType ??
-                      exercise?.trackingType ??
-                      "weight_reps";
-                    return (
-                      <div
-                        key={item.id}
-                        className="rounded-2xl border border-white/10 bg-black/20 p-4"
-                      >
-                        <div className="flex gap-3">
-                          <span className="text-sm text-slate-500">
-                            {index + 1}
-                          </span>
-                          <div>
-                            <h3 className="font-semibold">
+                <div className="flex items-start justify-between gap-4 px-1 pb-4">
+                  <div className="min-w-0">
+                    <p className="eyebrow">Today · {split?.name}</p>
+                    <h2 className="mt-2 break-words text-xl font-semibold sm:text-2xl">
+                      {workout.name}
+                    </h2>
+                  </div>
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-(--profile-accent) text-(--profile-primary-text)">
+                    <Dumbbell className="h-5 w-5" aria-hidden="true" />
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  {displayedWorkoutExercises.map(
+                    ({ item, index }, displayIndex) => {
+                      const exercise = data.exercises[item.exerciseId];
+                      const trackingType =
+                        item.trackingType ??
+                        exercise?.trackingType ??
+                        "weight_reps";
+                      const target =
+                        trackingType === "duration"
+                          ? `${item.durationSeconds ?? 0}s`
+                          : item.reps.kind === "exact"
+                            ? `${item.reps.reps}`
+                            : `${item.reps.min}–${item.reps.max}`;
+                      const measure =
+                        trackingType === "weight_reps"
+                          ? item.weight !== undefined
+                            ? `${item.weight} ${item.weightUnit ?? "lb"}`
+                            : "—"
+                          : trackingType === "duration"
+                            ? "Timed"
+                            : "Reps";
+
+                      if (displayIndex > 0) {
+                        return (
+                          <div
+                            key={item.id}
+                            className="rounded-2xl border border-(--profile-border) bg-(--profile-panel-strong) px-4 py-3.5"
+                          >
+                          <div className="flex items-center gap-3">
+                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/5 text-xs text-slate-400">
+                              {String(index + 1).padStart(2, "0")}
+                            </span>
+                            <div className="min-w-0 flex-1">
+                              <h3 className="truncate text-sm font-semibold">
+                                {exercise?.name ?? "Unavailable exercise"}
+                              </h3>
+                              {item.notes && (
+                                <p className="mt-0.5 truncate text-xs text-slate-500">
+                                  {item.notes}
+                                </p>
+                              )}
+                            </div>
+                            <span className="shrink-0 text-xs text-slate-500">
+                              {item.sets} sets
+                            </span>
+                          </div>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div
+                          key={item.id}
+                          className="theme-accent-surface rounded-2xl border p-4"
+                        >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="theme-accent-text text-xs">
+                              Exercise {index + 1} of {workout.exercises.length}
+                            </p>
+                            <h3 className="mt-1 break-words font-semibold">
                               {exercise?.name ?? "Unavailable exercise"}
                             </h3>
-                            <p className="mt-1 text-sm text-slate-400">
-                              {workoutExerciseText(item, trackingType)}
-                            </p>
-                            {item.notes && (
-                              <p className="mt-2 text-sm leading-6 text-slate-500">
-                                {item.notes}
-                              </p>
-                            )}
                           </div>
+                          <span className="theme-accent-surface theme-accent-text shrink-0 rounded-full border-0 px-2.5 py-1 text-xs">
+                            {workoutInProgress ? "In progress" : "Up first"}
+                          </span>
                         </div>
-                      </div>
-                    );
-                  })}
+                        <div className="mt-5 grid grid-cols-3 gap-2">
+                          {[
+                            ["Sets", String(item.sets)],
+                            [
+                              trackingType === "weight_reps"
+                                ? "Weight"
+                                : "Mode",
+                              measure,
+                            ],
+                            ["Target", target],
+                          ].map(([label, value]) => (
+                            <div
+                              key={label}
+                              className="rounded-xl bg-black/20 px-2 py-3 text-center"
+                            >
+                              <p className="text-[10px] uppercase tracking-wider text-slate-500">
+                                {label}
+                              </p>
+                              <p className="mt-1 truncate text-sm font-semibold">
+                                {value}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="mt-4 flex items-center gap-3 rounded-xl border border-(--profile-border) px-3 py-2.5">
+                          <TimerReset
+                            className="theme-accent-text h-4 w-4"
+                            aria-hidden="true"
+                          />
+                          <span className="text-xs text-slate-400">Rest timer</span>
+                          <span className="ml-auto font-mono text-sm">
+                            {Math.floor(item.restSeconds / 60)
+                              .toString()
+                              .padStart(2, "0")}
+                            :{(item.restSeconds % 60)
+                              .toString()
+                              .padStart(2, "0")}
+                          </span>
+                        </div>
+                        {item.notes && (
+                          <p className="mt-3 text-xs leading-5 text-slate-500">
+                            {item.notes}
+                          </p>
+                        )}
+                        </div>
+                      );
+                    },
+                  )}
                 </div>
                 <div className="mt-6 grid gap-3 sm:grid-cols-2">
                   <ActionButton
@@ -377,15 +481,26 @@ export function TodayScreen({ profileId }: { profileId: string }) {
                     disabled={workout.exercises.length === 0}
                     onClick={startWorkout}
                   >
-                    Start Workout
+                    {workoutInProgress ? "Resume Workout" : "Start Workout"}
                   </ActionButton>
-                  <ActionButton asChild>
-                    <Link
-                      href={`/profiles/${profileId}/workouts/${workout.id}/edit`}
+                  {workoutInProgress ? (
+                    <ActionButton
+                      type="button"
+                      disabled
+                      title="Finish the active workout before editing its exercises"
                     >
-                      Edit template
-                    </Link>
-                  </ActionButton>
+                      <LockKeyhole className="mr-2 h-4 w-4" aria-hidden="true" />
+                      Edit exercises
+                    </ActionButton>
+                  ) : (
+                    <ActionButton asChild>
+                      <Link
+                        href={`/profiles/${profileId}/workouts/${workout.id}/edit`}
+                      >
+                        Edit exercises
+                      </Link>
+                    </ActionButton>
+                  )}
                 </div>
               </>
             ) : experience.kind === "rest" ? (

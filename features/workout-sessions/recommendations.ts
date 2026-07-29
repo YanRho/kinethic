@@ -124,6 +124,36 @@ const strategies: Record<TrackingType, ProgressionStrategy> = {
   duration: durationStrategy,
 };
 
+function hasRecordedPerformance(exercise: SessionExercise) {
+  return exercise.sets.some((set) => {
+    if (!set.completedAt) return false;
+
+    return exercise.trackingType === "duration"
+      ? set.actualDurationSeconds !== undefined
+      : set.actualReps !== undefined;
+  });
+}
+
+function exercisesMatch(a: SessionExercise, b: SessionExercise) {
+  return (
+    a.templateExerciseId === b.templateExerciseId ||
+    a.exerciseId === b.exerciseId
+  );
+}
+
+export function wasExerciseSkippedLastTime(
+  currentExercise: SessionExercise,
+  previousSessions: WorkoutSession[],
+) {
+  const previousExercise = previousSessions
+    .filter((session) => session.completedAt)
+    .sort((a, b) => b.completedAt!.localeCompare(a.completedAt!))
+    .flatMap((session) => session.exercises)
+    .find((exercise) => exercisesMatch(exercise, currentExercise));
+
+  return Boolean(previousExercise?.skippedAt);
+}
+
 export function getPreviousExercise(
   currentExercise: SessionExercise,
   previousSessions: WorkoutSession[],
@@ -132,16 +162,12 @@ export function getPreviousExercise(
     .filter((session) => session.completedAt)
     .sort((a, b) => b.completedAt!.localeCompare(a.completedAt!))
     .flatMap((session) => session.exercises)
-    .filter((exercise) => !exercise.skippedAt);
+    .filter(
+      (exercise) => !exercise.skippedAt && hasRecordedPerformance(exercise),
+    );
 
   return (
-    exercises.find(
-      (exercise) =>
-        exercise.templateExerciseId === currentExercise.templateExerciseId,
-    ) ??
-    exercises.find(
-      (exercise) => exercise.exerciseId === currentExercise.exerciseId,
-    ) ??
+    exercises.find((exercise) => exercisesMatch(exercise, currentExercise)) ??
     null
   );
 }
