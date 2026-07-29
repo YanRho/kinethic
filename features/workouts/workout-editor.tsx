@@ -1,11 +1,15 @@
 "use client";
 
 import {
+  createContext,
   FormEvent,
+  ReactNode,
+  useContext,
   useEffect,
   useLayoutEffect,
   useRef,
   useState,
+  useSyncExternalStore,
 } from "react";
 import { useRouter } from "next/navigation";
 import { GripVertical, SlidersHorizontal, X } from "lucide-react";
@@ -35,6 +39,13 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import {
   ActionButton,
   AppInput,
@@ -74,6 +85,101 @@ const randomWorkoutNamePlaceholder = () => {
   lastWorkoutNamePlaceholderIndex = index;
   return workoutNamePlaceholders[index];
 };
+
+const mobileEditorQuery = "(max-width: 639px)";
+const MobileEditorContext = createContext(false);
+
+const subscribeToMobileEditor = (onChange: () => void) => {
+  const query = window.matchMedia(mobileEditorQuery);
+  query.addEventListener("change", onChange);
+  return () => query.removeEventListener("change", onChange);
+};
+
+const getMobileEditorSnapshot = () =>
+  window.matchMedia(mobileEditorQuery).matches;
+
+const getMobileEditorServerSnapshot = () => false;
+
+function ExerciseSettingsRoot({
+  open,
+  onOpenChange,
+  children,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  children: ReactNode;
+}) {
+  const mobile = useSyncExternalStore(
+    subscribeToMobileEditor,
+    getMobileEditorSnapshot,
+    getMobileEditorServerSnapshot,
+  );
+
+  return (
+    <MobileEditorContext.Provider value={mobile}>
+      {mobile ? (
+        <Sheet open={open} onOpenChange={onOpenChange}>
+          {children}
+        </Sheet>
+      ) : (
+        <Popover open={open} onOpenChange={onOpenChange}>
+          {children}
+        </Popover>
+      )}
+    </MobileEditorContext.Provider>
+  );
+}
+
+function ExerciseSettingsTrigger({ children }: { children: ReactNode }) {
+  const mobile = useContext(MobileEditorContext);
+
+  return mobile ? (
+    <SheetTrigger asChild>{children}</SheetTrigger>
+  ) : (
+    <PopoverTrigger asChild>{children}</PopoverTrigger>
+  );
+}
+
+function ExerciseSettingsContent({
+  title,
+  children,
+  style,
+}: {
+  title: string;
+  children: ReactNode;
+  style: ReturnType<typeof getProfileThemeStyle>;
+}) {
+  const mobile = useContext(MobileEditorContext);
+
+  if (mobile) {
+    return (
+      <SheetContent
+        side="bottom"
+        className="max-h-[90dvh] gap-0 overflow-hidden rounded-t-3xl border-(--profile-border) bg-(--profile-panel) text-white data-[side=bottom]:h-[min(90dvh,44rem)]"
+        style={style}
+      >
+        <SheetHeader className="shrink-0 border-b border-(--profile-border) pr-14">
+          <SheetTitle className="text-left text-white">{title}</SheetTitle>
+        </SheetHeader>
+        <div className="touch-pan-y overflow-y-auto overscroll-contain p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+          {children}
+        </div>
+      </SheetContent>
+    );
+  }
+
+  return (
+    <PopoverContent
+      align="center"
+      sideOffset={8}
+      collisionPadding={16}
+      className="max-h-[min(calc(100dvh-2rem),var(--radix-popover-content-available-height),42rem)] w-[min(calc(100vw-2rem),32rem)] overflow-y-auto overscroll-contain border border-(--profile-border) bg-(--profile-panel) p-4 text-white"
+      style={style}
+    >
+      {children}
+    </PopoverContent>
+  );
+}
 
 export function WorkoutEditor({
   profileId,
@@ -341,7 +447,7 @@ export function WorkoutEditor({
                   }}
                   className={`panel overflow-hidden transition ${draggedExerciseId === item.id ? "opacity-45" : ""} ${dragOverExerciseId === item.id && draggedExerciseId !== item.id ? "theme-accent-surface" : ""}`}
                 >
-                  <Popover
+                  <ExerciseSettingsRoot
                     open={open}
                     onOpenChange={(nextOpen) =>
                       setOpenExerciseId(nextOpen ? item.id : null)
@@ -378,7 +484,7 @@ export function WorkoutEditor({
                     >
                       <GripVertical aria-hidden="true" />
                     </ActionButton>
-                    <PopoverTrigger asChild>
+                    <ExerciseSettingsTrigger>
                       <ActionButton
                         tone="ghost"
                         type="button"
@@ -405,7 +511,7 @@ export function WorkoutEditor({
                           className="theme-accent-text h-5 w-5 shrink-0"
                         />
                       </ActionButton>
-                    </PopoverTrigger>
+                    </ExerciseSettingsTrigger>
                     <ActionButton
                       tone="ghost"
                       type="button"
@@ -418,10 +524,8 @@ export function WorkoutEditor({
                       <X aria-hidden="true" />
                     </ActionButton>
                   </div>
-                  <PopoverContent
-                    align="center"
-                    sideOffset={8}
-                    className="max-h-[min(80dvh,42rem)] w-[min(calc(100vw-2rem),32rem)] overflow-y-auto border border-(--profile-border) bg-(--profile-panel) p-4 text-white"
+                  <ExerciseSettingsContent
+                    title={`Edit ${exercise?.name ?? "exercise"}`}
                     style={getProfileThemeStyle(profile.accent)}
                   >
                     <div>
@@ -447,7 +551,7 @@ export function WorkoutEditor({
                           </Select>
                         </label>
                         {trackingType && (
-                          <>
+                          <div className="col-span-2 grid grid-cols-2 gap-3 animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
                             <label className="field">
                               <span>Sets</span>
                               <AppInput
@@ -656,7 +760,7 @@ export function WorkoutEditor({
                                 />
                               </label>
                             )}
-                          </>
+                          </div>
                         )}
                       </div>
                       {!trackingType && (
@@ -666,7 +770,7 @@ export function WorkoutEditor({
                         </p>
                       )}
                       {trackingType && (
-                        <label className="field mt-3">
+                        <label className="field mt-3 animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
                           <span>Notes (optional)</span>
                           <AppTextarea
                             rows={2}
@@ -681,8 +785,8 @@ export function WorkoutEditor({
                         </label>
                       )}
                     </div>
-                  </PopoverContent>
-                  </Popover>
+                  </ExerciseSettingsContent>
+                  </ExerciseSettingsRoot>
                 </Surface>
               );
             })}
