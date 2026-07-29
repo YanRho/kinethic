@@ -46,7 +46,7 @@ export type Profile = {
   id: Id;
   name: string;
   accent: string;
-  age?: number;
+  birthDate?: string;
   gender?: Gender;
   weightLb?: number;
   heightIn?: number;
@@ -145,7 +145,7 @@ export type ExercisePreferences = {
 };
 
 export type KinEthicData = {
-  schemaVersion: 15;
+  schemaVersion: 16;
   profiles: Record<Id, Profile>;
   splits: Record<Id, WorkoutSplit>;
   workouts: Record<Id, Workout>;
@@ -165,7 +165,7 @@ export const emptySchedule = (): WeeklySchedule => ({
 });
 
 export const emptyData = (): KinEthicData => ({
-  schemaVersion: 15,
+  schemaVersion: 16,
   profiles: {},
   splits: {},
   workouts: {},
@@ -188,4 +188,27 @@ export function initials(name: string) {
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase())
     .join("");
+}
+
+export function ageFromBirthDate(birthDate: string, today = new Date()) {
+  const [year, month, day] = birthDate.split("-").map(Number);
+  if (!year || !month || !day) return null;
+
+  const date = new Date(year, month - 1, day);
+  if (
+    date.getFullYear() !== year ||
+    date.getMonth() !== month - 1 ||
+    date.getDate() !== day
+  ) {
+    return null;
+  }
+
+  let age = today.getFullYear() - year;
+  if (
+    today.getMonth() < month - 1 ||
+    (today.getMonth() === month - 1 && today.getDate() < day)
+  ) {
+    age -= 1;
+  }
+  return age;
 }

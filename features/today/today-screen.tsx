@@ -19,6 +19,7 @@ import {
 } from "@/app/_components/ui";
 import {
   Gender,
+  ageFromBirthDate,
   dayLabel,
   localDay,
   weekdays,
@@ -50,6 +51,24 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { ActionButton, AppInput, Surface } from "@/components/kinethic-ui";
+import {
+  ResponsiveDoubleWheelField,
+  ResponsiveTripleWheelField,
+  ResponsiveWheelField,
+} from "@/components/responsive-wheel-picker";
+import {
+  birthDateParts,
+  birthDateFromParts,
+  birthYearWheelOptions,
+  dayWheelOptions,
+  feetWheelOptions,
+  formatBirthDate,
+  genderWheelOptions,
+  inchesWheelOptions,
+  includeCurrentWheelValue,
+  monthWheelOptions,
+  weightWheelOptions,
+} from "@/lib/kinethic/profile-wheel-options";
 import {
   Dialog,
   DialogContent,
@@ -86,7 +105,7 @@ export function TodayScreen({ profileId }: { profileId: string }) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [profileDialogOpen, setProfileDialogOpen] = useState(false);
   const [editName, setEditName] = useState("");
-  const [editAge, setEditAge] = useState("");
+  const [editBirthDate, setEditBirthDate] = useState("");
   const [editGender, setEditGender] =
     useState<Gender>("prefer_not_to_say");
   const [editWeightLb, setEditWeightLb] = useState("");
@@ -149,7 +168,7 @@ export function TodayScreen({ profileId }: { profileId: string }) {
   };
   const openProfileEditor = () => {
     setEditName(profile.name);
-    setEditAge(profile.age?.toString() ?? "");
+    setEditBirthDate(profile.birthDate ?? "");
     setEditGender(profile.gender ?? "prefer_not_to_say");
     setEditWeightLb(profile.weightLb?.toString() ?? "");
     setEditHeightFeet(
@@ -161,19 +180,19 @@ export function TodayScreen({ profileId }: { profileId: string }) {
     setProfileDialogOpen(true);
   };
   const saveProfile = () => {
-    const age = Number(editAge);
+    const age = ageFromBirthDate(editBirthDate);
     const weightLb = Number(editWeightLb);
     const heightFeet = Number(editHeightFeet);
     const heightInches = Number(editHeightInches);
     const heightIn = heightFeet * 12 + heightInches;
     if (
       !editName.trim() ||
-      !Number.isInteger(age) ||
+      age === null ||
       age < 13 ||
       age > 120 ||
       !Number.isFinite(weightLb) ||
-      weightLb <= 0 ||
-      weightLb > 1500 ||
+      weightLb < 33 ||
+      weightLb > 1400 ||
       !Number.isInteger(heightFeet) ||
       heightFeet < 1 ||
       heightFeet > 8 ||
@@ -185,7 +204,7 @@ export function TodayScreen({ profileId }: { profileId: string }) {
     }
     repository.updateProfile(profile.id, {
       name: editName,
-      age,
+      birthDate: editBirthDate,
       gender: editGender,
       weightLb,
       heightIn,
@@ -196,6 +215,9 @@ export function TodayScreen({ profileId }: { profileId: string }) {
     profile.weightLb && profile.heightIn
       ? calculateBmi(profile.weightLb, profile.heightIn)
       : null;
+  const profileAge = profile.birthDate
+    ? ageFromBirthDate(profile.birthDate)
+    : null;
   const healthyWeightRange = profile.heightIn
     ? getHealthyWeightRange(profile.heightIn)
     : null;
@@ -276,13 +298,13 @@ export function TodayScreen({ profileId }: { profileId: string }) {
                 >
                   {profile.name}
                 </button>
-                {bmi && profile.age !== undefined ? (
+                {bmi && profileAge !== null ? (
                   <Popover>
                     <PopoverTrigger asChild>
                       <button
                         type="button"
-                        className={`rounded-full bg-linear-to-r px-2.5 py-1 text-xs font-bold text-white shadow-sm ${profile.age >= 20 ? bmiGradient(bmi) : "from-indigo-500 via-violet-500 to-purple-600"}`}
-                        aria-label={`BMI ${bmi.toFixed(1)}${profile.age >= 20 ? `, ${getBmiCategory(bmi)}` : ""}`}
+                        className={`rounded-full bg-linear-to-r px-2.5 py-1 text-xs font-bold text-white shadow-sm ${profileAge >= 20 ? bmiGradient(bmi) : "from-indigo-500 via-violet-500 to-purple-600"}`}
+                        aria-label={`BMI ${bmi.toFixed(1)}${profileAge >= 20 ? `, ${getBmiCategory(bmi)}` : ""}`}
                       >
                         BMI {bmi.toFixed(1)}
                       </button>
@@ -293,11 +315,11 @@ export function TodayScreen({ profileId }: { profileId: string }) {
                       className="profile-theme w-[min(20rem,calc(100vw-2rem))] border border-(--profile-border) bg-(--profile-panel-strong) p-4 text-white"
                     >
                       <p className="font-semibold">
-                        {profile.age >= 20
+                        {profileAge >= 20
                           ? getBmiCategory(bmi)
                           : "Age-specific guidance"}
                       </p>
-                      {profile.age >= 20 && healthyWeightRange ? (
+                      {profileAge >= 20 && healthyWeightRange ? (
                         <p className="text-sm leading-6 text-slate-400">
                           The WHO healthy adult BMI range of 18.5–24.9 is about{" "}
                           {Math.round(healthyWeightRange.minLb)}–
@@ -611,78 +633,132 @@ export function TodayScreen({ profileId }: { profileId: string }) {
           </label>
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="field">
-              <span>Age</span>
-              <AppInput
-                type="number"
-                min="13"
-                max="120"
-                inputMode="numeric"
-                value={editAge}
-                onChange={(event) => setEditAge(event.target.value)}
-              />
+              <span>Birthdate</span>
+              <ResponsiveTripleWheelField
+                title="Birthdate"
+                labels={["Month", "Day", "Year"]}
+                values={[
+                  birthDateParts(editBirthDate).month,
+                  birthDateParts(editBirthDate).day,
+                  birthDateParts(editBirthDate).year,
+                ]}
+                options={[
+                  monthWheelOptions,
+                  dayWheelOptions,
+                  birthYearWheelOptions,
+                ]}
+                displayValue={formatBirthDate(editBirthDate)}
+                onValueChange={(month, day, year) =>
+                  setEditBirthDate(birthDateFromParts(month, day, year))
+                }
+                style={getProfileThemeStyle(profile.accent)}
+              >
+                <AppInput
+                  type="date"
+                  value={editBirthDate}
+                  onChange={(event) => setEditBirthDate(event.target.value)}
+                />
+              </ResponsiveTripleWheelField>
             </label>
             <label className="field">
               <span>Gender</span>
-              <Select
+              <ResponsiveWheelField
+                title="Gender"
                 value={editGender}
+                options={genderWheelOptions}
                 onValueChange={(value) => setEditGender(value as Gender)}
+                style={getProfileThemeStyle(profile.accent)}
               >
-                <SelectTrigger className="mt-2 min-h-12 w-full rounded-2xl border-(--profile-border) bg-(--profile-background)">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="woman">Woman</SelectItem>
-                  <SelectItem value="man">Man</SelectItem>
-                  <SelectItem value="nonbinary">Non-binary</SelectItem>
-                  <SelectItem value="prefer_not_to_say">
-                    Prefer not to say
-                  </SelectItem>
-                </SelectContent>
-              </Select>
+                <Select
+                  value={editGender}
+                  onValueChange={(value) => setEditGender(value as Gender)}
+                >
+                  <SelectTrigger className="mt-2 min-h-12 w-full rounded-2xl border-(--profile-border) bg-(--profile-background)">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="woman">Woman</SelectItem>
+                    <SelectItem value="man">Man</SelectItem>
+                    <SelectItem value="nonbinary">Non-binary</SelectItem>
+                    <SelectItem value="prefer_not_to_say">
+                      Prefer not to say
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </ResponsiveWheelField>
             </label>
           </div>
           <label className="field">
             <span>Weight (lb)</span>
-            <AppInput
-              type="number"
-              min="1"
-              max="1500"
-              step="0.1"
-              inputMode="decimal"
+            <ResponsiveWheelField
+              title="Weight (lb)"
               value={editWeightLb}
-              onChange={(event) => setEditWeightLb(event.target.value)}
-            />
+              options={includeCurrentWheelValue(
+                weightWheelOptions,
+                editWeightLb,
+              )}
+              onValueChange={(value) => setEditWeightLb(String(value))}
+              style={getProfileThemeStyle(profile.accent)}
+            >
+              <AppInput
+                type="number"
+                min="33"
+                max="1400"
+                step="0.1"
+                inputMode="decimal"
+                value={editWeightLb}
+                onChange={(event) => setEditWeightLb(event.target.value)}
+              />
+            </ResponsiveWheelField>
           </label>
           <fieldset>
             <legend className="text-sm font-medium text-slate-300">
               Height
             </legend>
-            <div className="mt-2 grid grid-cols-1 gap-3 min-[360px]:grid-cols-2">
-              <label className="field">
-                <span className="sr-only">Height in feet</span>
-                <AppInput
-                  type="number"
-                  min="1"
-                  max="8"
-                  inputMode="numeric"
-                  placeholder="Feet"
-                  value={editHeightFeet}
-                  onChange={(event) => setEditHeightFeet(event.target.value)}
-                />
-              </label>
-              <label className="field">
-                <span className="sr-only">Additional height in inches</span>
-                <AppInput
-                  type="number"
-                  min="0"
-                  max="11"
-                  inputMode="numeric"
-                  placeholder="Inches"
-                  value={editHeightInches}
-                  onChange={(event) => setEditHeightInches(event.target.value)}
-                />
-              </label>
-            </div>
+            <ResponsiveDoubleWheelField
+              title="Height"
+              leftLabel="Feet"
+              rightLabel="Inches"
+              leftValue={editHeightFeet}
+              rightValue={editHeightInches}
+              leftOptions={feetWheelOptions}
+              rightOptions={inchesWheelOptions}
+              displayValue={`${editHeightFeet} ft ${editHeightInches} in`}
+              onValueChange={(feet, inches) => {
+                setEditHeightFeet(feet);
+                setEditHeightInches(inches);
+              }}
+              style={getProfileThemeStyle(profile.accent)}
+            >
+              <div className="mt-2 grid grid-cols-1 gap-3 min-[360px]:grid-cols-2">
+                <label className="field">
+                  <span className="sr-only">Height in feet</span>
+                  <AppInput
+                    type="number"
+                    min="1"
+                    max="8"
+                    inputMode="numeric"
+                    placeholder="Feet"
+                    value={editHeightFeet}
+                    onChange={(event) => setEditHeightFeet(event.target.value)}
+                  />
+                </label>
+                <label className="field">
+                  <span className="sr-only">Additional height in inches</span>
+                  <AppInput
+                    type="number"
+                    min="0"
+                    max="11"
+                    inputMode="numeric"
+                    placeholder="Inches"
+                    value={editHeightInches}
+                    onChange={(event) =>
+                      setEditHeightInches(event.target.value)
+                    }
+                  />
+                </label>
+              </div>
+            </ResponsiveDoubleWheelField>
           </fieldset>
           <DialogFooter>
             <ActionButton type="button" onClick={() => setProfileDialogOpen(false)}>

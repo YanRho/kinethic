@@ -30,7 +30,7 @@ export interface KinEthicRepository {
   createProfile(input: {
     name: string;
     accent: string;
-    age: number;
+    birthDate: string;
     gender: Gender;
     weightLb: number;
     heightIn: number;
@@ -39,7 +39,7 @@ export interface KinEthicRepository {
     profileId: Id,
     input: {
       name: string;
-      age: number;
+      birthDate: string;
       gender: Gender;
       weightLb: number;
       heightIn: number;
@@ -165,7 +165,7 @@ function migrateLegacy(raw: string | null): KinEthicData {
 function sanitize(value: unknown): KinEthicData {
   if (
     !isRecord(value) ||
-    ![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15].includes(
+    ![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16].includes(
       Number(value.schemaVersion),
     )
   ) {
@@ -189,6 +189,17 @@ function sanitize(value: unknown): KinEthicData {
     for (const exercise of workout.exercises) {
       exercise.trackingType = normalizeTrackingType(exercise.trackingType);
     }
+  }
+  for (const profile of Object.values(data.profiles)) {
+    const legacy = profile as Profile & { age?: number };
+    if (
+      !profile.birthDate &&
+      Number.isInteger(legacy.age) &&
+      legacy.age! >= 0
+    ) {
+      profile.birthDate = `${new Date().getFullYear() - legacy.age!}-01-01`;
+    }
+    delete legacy.age;
   }
   for (const session of Object.values(data.workoutSessions)) {
     for (const exercise of session.exercises) {
@@ -345,7 +356,7 @@ class LocalStorageRepository implements KinEthicRepository {
   createProfile(input: {
     name: string;
     accent: string;
-    age: number;
+    birthDate: string;
     gender: Gender;
     weightLb: number;
     heightIn: number;
@@ -357,7 +368,7 @@ class LocalStorageRepository implements KinEthicRepository {
       id: profileId,
       name: input.name.trim(),
       accent: input.accent,
-      age: input.age,
+      birthDate: input.birthDate,
       gender: input.gender,
       weightLb: input.weightLb,
       heightIn: input.heightIn,
@@ -373,7 +384,7 @@ class LocalStorageRepository implements KinEthicRepository {
     profileId: Id,
     input: {
       name: string;
-      age: number;
+      birthDate: string;
       gender: Gender;
       weightLb: number;
       heightIn: number;
@@ -386,7 +397,7 @@ class LocalStorageRepository implements KinEthicRepository {
     const updated: Profile = {
       ...profile,
       name: input.name.trim(),
-      age: input.age,
+      birthDate: input.birthDate,
       gender: input.gender,
       weightLb: input.weightLb,
       heightIn: input.heightIn,

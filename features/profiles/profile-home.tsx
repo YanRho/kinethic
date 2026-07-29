@@ -15,8 +15,26 @@ import {
 import { ProfileBadge } from "@/app/_components/ui";
 import { useKinEthicData, useKinEthicHydrated } from "@/lib/kinethic/hooks";
 import { repository } from "@/lib/kinethic/repository";
-import { Gender } from "@/lib/kinethic/domain";
+import { Gender, ageFromBirthDate } from "@/lib/kinethic/domain";
 import { ActionButton, AppInput } from "@/components/kinethic-ui";
+import {
+  ResponsiveDoubleWheelField,
+  ResponsiveTripleWheelField,
+  ResponsiveWheelField,
+} from "@/components/responsive-wheel-picker";
+import {
+  birthDateParts,
+  birthDateFromParts,
+  birthYearWheelOptions,
+  dayWheelOptions,
+  feetWheelOptions,
+  formatBirthDate,
+  genderWheelOptions,
+  inchesWheelOptions,
+  initialWeightWheelOptions,
+  monthWheelOptions,
+  weightWheelOptions,
+} from "@/lib/kinethic/profile-wheel-options";
 import {
   Select,
   SelectContent,
@@ -39,7 +57,7 @@ export function ProfileHome({ landingPage = false }: { landingPage?: boolean }) 
   const router = useRouter();
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState("");
-  const [age, setAge] = useState("");
+  const [birthDate, setBirthDate] = useState("");
   const [gender, setGender] = useState<Gender>("prefer_not_to_say");
   const [weightLb, setWeightLb] = useState("");
   const [heightFeet, setHeightFeet] = useState("");
@@ -48,18 +66,18 @@ export function ProfileHome({ landingPage = false }: { landingPage?: boolean }) 
   const showingCreator = creating;
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    const parsedAge = Number(age);
+    const parsedAge = ageFromBirthDate(birthDate);
     const parsedWeight = Number(weightLb);
     const parsedFeet = Number(heightFeet);
     const parsedInches = Number(heightInches);
     if (
       !name.trim() ||
-      !Number.isInteger(parsedAge) ||
+      parsedAge === null ||
       parsedAge < 13 ||
       parsedAge > 120 ||
       !Number.isFinite(parsedWeight) ||
-      parsedWeight <= 0 ||
-      parsedWeight > 1500 ||
+      parsedWeight < 33 ||
+      parsedWeight > 1400 ||
       !Number.isInteger(parsedFeet) ||
       parsedFeet < 1 ||
       parsedFeet > 8 ||
@@ -72,7 +90,7 @@ export function ProfileHome({ landingPage = false }: { landingPage?: boolean }) 
     const profile = repository.createProfile({
       name,
       accent,
-      age: parsedAge,
+      birthDate,
       gender,
       weightLb: parsedWeight,
       heightIn: parsedFeet * 12 + parsedInches,
@@ -351,84 +369,136 @@ export function ProfileHome({ landingPage = false }: { landingPage?: boolean }) 
               </label>
               <div className="mt-4 grid gap-4 sm:grid-cols-2">
                 <label className="field">
-                  <span>Age</span>
-                  <AppInput
-                    required
-                    type="number"
-                    min="13"
-                    max="120"
-                    inputMode="numeric"
-                    value={age}
-                    onChange={(e) => setAge(e.target.value)}
-                    placeholder="Age"
-                  />
+                  <span>Birthdate</span>
+                  <ResponsiveTripleWheelField
+                    title="Birthdate"
+                    labels={["Month", "Day", "Year"]}
+                    values={[
+                      birthDateParts(birthDate).month,
+                      birthDateParts(birthDate).day,
+                      birthDateParts(birthDate).year,
+                    ]}
+                    options={[
+                      monthWheelOptions,
+                      dayWheelOptions,
+                      birthYearWheelOptions,
+                    ]}
+                    displayValue={formatBirthDate(birthDate)}
+                    onValueChange={(month, day, year) =>
+                      setBirthDate(birthDateFromParts(month, day, year))
+                    }
+                  >
+                    <AppInput
+                      required
+                      type="date"
+                      value={birthDate}
+                      onChange={(e) => setBirthDate(e.target.value)}
+                    />
+                  </ResponsiveTripleWheelField>
                 </label>
                 <label className="field">
                   <span>Gender</span>
-                  <Select
+                  <ResponsiveWheelField
+                    title="Gender"
                     value={gender}
+                    options={genderWheelOptions}
                     onValueChange={(value) => setGender(value as Gender)}
                   >
-                    <SelectTrigger className="mt-2 min-h-12 w-full rounded-2xl border-white/10 bg-[#080b12]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="woman">Woman</SelectItem>
-                      <SelectItem value="man">Man</SelectItem>
-                      <SelectItem value="nonbinary">Non-binary</SelectItem>
-                      <SelectItem value="prefer_not_to_say">
-                        Prefer not to say
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
+                    <Select
+                      value={gender}
+                      onValueChange={(value) => setGender(value as Gender)}
+                    >
+                      <SelectTrigger className="mt-2 min-h-12 w-full rounded-2xl border-white/10 bg-[#080b12]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="woman">Woman</SelectItem>
+                        <SelectItem value="man">Man</SelectItem>
+                        <SelectItem value="nonbinary">Non-binary</SelectItem>
+                        <SelectItem value="prefer_not_to_say">
+                          Prefer not to say
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </ResponsiveWheelField>
                 </label>
               </div>
               <label className="field mt-4">
                 <span>Weight (lb)</span>
-                <AppInput
-                  required
-                  type="number"
-                  min="1"
-                  max="1500"
-                  step="0.1"
-                  inputMode="decimal"
+                <ResponsiveWheelField
+                  title="Weight (lb)"
                   value={weightLb}
-                  onChange={(e) => setWeightLb(e.target.value)}
-                  placeholder="Weight"
-                />
+                  options={
+                    weightLb
+                      ? weightWheelOptions
+                      : initialWeightWheelOptions
+                  }
+                  onValueChange={(value) => setWeightLb(String(value))}
+                >
+                  <AppInput
+                    required
+                    type="number"
+                    min="33"
+                    max="1400"
+                    step="0.1"
+                    inputMode="decimal"
+                    value={weightLb}
+                    onChange={(e) => setWeightLb(e.target.value)}
+                    placeholder="Weight"
+                  />
+                </ResponsiveWheelField>
               </label>
               <fieldset className="mt-4">
                 <legend className="text-sm font-medium text-slate-300">
                   Height
                 </legend>
-                <div className="mt-2 grid grid-cols-2 gap-3">
-                  <label className="field">
-                    <span className="sr-only">Height in feet</span>
-                    <AppInput
-                      required
-                      type="number"
-                      min="1"
-                      max="8"
-                      inputMode="numeric"
-                      value={heightFeet}
-                      onChange={(e) => setHeightFeet(e.target.value)}
-                      placeholder="Feet"
-                    />
-                  </label>
-                  <label className="field">
-                    <span className="sr-only">Additional height in inches</span>
-                    <AppInput
-                      required
-                      type="number"
-                      min="0"
-                      max="11"
-                      inputMode="numeric"
-                      value={heightInches}
-                      onChange={(e) => setHeightInches(e.target.value)}
-                      placeholder="Inches"
-                    />
-                  </label>
-                </div>
+                <ResponsiveDoubleWheelField
+                  title="Height"
+                  leftLabel="Feet"
+                  rightLabel="Inches"
+                  leftValue={heightFeet}
+                  rightValue={heightInches}
+                  leftOptions={feetWheelOptions}
+                  rightOptions={inchesWheelOptions}
+                  displayValue={
+                    heightFeet
+                      ? `${heightFeet} ft ${heightInches || 0} in`
+                      : "Choose height"
+                  }
+                  onValueChange={(feet, inches) => {
+                    setHeightFeet(feet);
+                    setHeightInches(inches);
+                  }}
+                >
+                  <div className="mt-2 grid grid-cols-2 gap-3">
+                    <label className="field">
+                      <span className="sr-only">Height in feet</span>
+                      <AppInput
+                        required
+                        type="number"
+                        min="1"
+                        max="8"
+                        inputMode="numeric"
+                        value={heightFeet}
+                        onChange={(e) => setHeightFeet(e.target.value)}
+                        placeholder="Feet"
+                      />
+                    </label>
+                    <label className="field">
+                      <span className="sr-only">Additional height in inches</span>
+                      <AppInput
+                        required
+                        type="number"
+                        min="0"
+                        max="11"
+                        inputMode="numeric"
+                        value={heightInches}
+                        onChange={(e) => setHeightInches(e.target.value)}
+                        placeholder="Inches"
+                      />
+                    </label>
+                  </div>
+                </ResponsiveDoubleWheelField>
               </fieldset>
               <div className="mt-5">
                 <p className="text-sm font-medium text-slate-300">
