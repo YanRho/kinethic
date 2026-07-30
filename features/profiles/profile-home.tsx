@@ -12,7 +12,8 @@ import {
   TimerReset,
   TrendingUp,
 } from "lucide-react";
-import { ProfileBadge } from "@/app/_components/ui";
+import { ProfileBadge, getProfileThemeStyle } from "@/app/_components/ui";
+import { ProfileThemeProvider } from "@/components/profile-theme-context";
 import { useKinEthicData, useKinEthicHydrated } from "@/lib/kinethic/hooks";
 import { repository } from "@/lib/kinethic/repository";
 import { Gender, ageFromBirthDate } from "@/lib/kinethic/domain";
@@ -98,7 +99,8 @@ export function ProfileHome({ landingPage = false }: { landingPage?: boolean }) 
     router.replace(`/profiles/${profile.id}/splits/new`);
   };
   return (
-    <main className="safe-page min-h-dvh overflow-x-hidden bg-[#080b12] px-3 text-white sm:px-5">
+    <ProfileThemeProvider style={getProfileThemeStyle(accent)}>
+      <main className="safe-page min-h-dvh overflow-x-hidden bg-[#080b12] px-3 text-white sm:px-5">
       <div className="mx-auto flex min-h-[calc(100dvh-3rem)] min-w-0 max-w-6xl flex-col">
         <header className="flex min-h-14 items-center justify-between gap-4 pt-1">
           {landingPage ? (
@@ -260,18 +262,6 @@ export function ProfileHome({ landingPage = false }: { landingPage?: boolean }) 
                         ),
                       )}
                     </div>
-                    <div className="mt-6 grid gap-3 sm:grid-cols-2">
-                      <div className="primary-button flex min-h-12 items-center justify-center rounded-2xl px-4 py-3 text-sm font-semibold">
-                        Resume Workout
-                      </div>
-                      <div className="muted-button opacity-50">
-                        <LockKeyhole
-                          className="mr-2 h-4 w-4"
-                          aria-hidden="true"
-                        />
-                        Edit exercises
-                      </div>
-                    </div>
                   </div>
                 </div>
               </div>
@@ -409,6 +399,7 @@ export function ProfileHome({ landingPage = false }: { landingPage?: boolean }) 
                     onValueChange={(month, day, year) =>
                       setBirthDate(birthDateFromParts(month, day, year))
                     }
+                    style={getProfileThemeStyle(accent)}
                   >
                     <AppInput
                       required
@@ -425,6 +416,7 @@ export function ProfileHome({ landingPage = false }: { landingPage?: boolean }) 
                     value={gender}
                     options={genderWheelOptions}
                     onValueChange={(value) => setGender(value as Gender)}
+                    style={getProfileThemeStyle(accent)}
                   >
                     <Select
                       value={gender}
@@ -456,6 +448,7 @@ export function ProfileHome({ landingPage = false }: { landingPage?: boolean }) 
                       : initialWeightWheelOptions
                   }
                   onValueChange={(value) => setWeightLb(String(value))}
+                  style={getProfileThemeStyle(accent)}
                 >
                   <AppInput
                     required
@@ -491,6 +484,7 @@ export function ProfileHome({ landingPage = false }: { landingPage?: boolean }) 
                     setHeightFeet(feet);
                     setHeightInches(inches);
                   }}
+                  style={getProfileThemeStyle(accent)}
                 >
                   <div className="mt-2 grid grid-cols-2 gap-3">
                     <label className="field">
@@ -554,6 +548,7 @@ export function ProfileHome({ landingPage = false }: { landingPage?: boolean }) 
           )}
         </section>
       </div>
-    </main>
+      </main>
+    </ProfileThemeProvider>
   );
 }

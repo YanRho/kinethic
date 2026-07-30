@@ -17,6 +17,7 @@ import {
   ProfileBadge,
   getProfileThemeStyle,
 } from "@/app/_components/ui";
+import { ProfileThemeProvider } from "@/components/profile-theme-context";
 import {
   Gender,
   ageFromBirthDate,
@@ -279,10 +280,11 @@ export function TodayScreen({ profileId }: { profileId: string }) {
     }
   };
   return (
-    <main
-      className="profile-theme safe-page min-h-dvh overflow-x-hidden bg-[#080b12] px-3 text-white sm:px-4"
-      style={getProfileThemeStyle(profile.accent)}
-    >
+    <ProfileThemeProvider style={getProfileThemeStyle(profile.accent)}>
+      <main
+        className="profile-theme safe-page min-h-dvh overflow-x-hidden bg-[#080b12] px-3 text-white sm:px-4"
+        style={getProfileThemeStyle(profile.accent)}
+      >
       <div className="mx-auto max-w-md">
         <header className="flex items-center justify-between">
           <Link href="/profiles">
@@ -851,6 +853,7 @@ export function TodayScreen({ profileId }: { profileId: string }) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </main>
+      </main>
+    </ProfileThemeProvider>
   );
 }

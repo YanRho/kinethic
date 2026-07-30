@@ -2,6 +2,7 @@ import type { CSSProperties } from "react";
 import { Profile, initials } from "@/lib/kinethic/domain";
 import { BackButton, HomeButton } from "./back-button";
 import { Surface } from "@/components/kinethic-ui";
+import { ProfileThemeProvider } from "@/components/profile-theme-context";
 
 export function Brand() {
   return (
@@ -44,12 +45,15 @@ export function PageShell({
   backConfirmMessage?: string;
   onBeforeBack?: () => void;
 }) {
+  const themeStyle = profile ? getProfileThemeStyle(profile.accent) : undefined;
+
   return (
-    <main
-      className={`safe-page min-h-dvh overflow-x-hidden bg-[#080b12] px-3 text-white sm:px-5 ${profile ? "profile-theme" : ""}`}
-      style={profile ? getProfileThemeStyle(profile.accent) : undefined}
-    >
-      <div className="mx-auto min-w-0 max-w-5xl">
+    <ProfileThemeProvider style={themeStyle}>
+      <main
+        className={`safe-page min-h-dvh overflow-x-hidden bg-[#080b12] px-3 text-white sm:px-5 ${profile ? "profile-theme" : ""}`}
+        style={themeStyle}
+      >
+        <div className="mx-auto min-w-0 max-w-5xl">
         <header className="flex min-h-12 items-center justify-between gap-3">
           {backHref ? (
             <div className="flex shrink-0 items-center gap-2">
@@ -74,8 +78,9 @@ export function PageShell({
           )}
         </header>
         {children}
-      </div>
-    </main>
+        </div>
+      </main>
+    </ProfileThemeProvider>
   );
 }
 

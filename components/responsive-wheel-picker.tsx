@@ -33,9 +33,15 @@ const getServerSnapshot = () => false;
 const wheelClassNames = {
   optionItem: "text-slate-500",
   highlightWrapper:
-    "rounded-xl border-y border-cyan-300/20 bg-[#102238] text-lg text-white",
+    "rounded-xl border-y border-(--profile-accent-border) bg-(--profile-panel-strong) text-lg text-white",
   highlightItem: "font-semibold text-white",
 };
+
+const triggerClassName =
+  "mt-2 flex min-h-12 w-full items-center justify-between rounded-2xl border border-(--profile-border) bg-(--profile-background) px-4 py-3 text-left text-base text-white outline-none transition active:scale-[0.99]";
+
+const sheetClassName =
+  "profile-theme profile-overlay z-[70] gap-0 rounded-t-3xl border-(--profile-border) text-white";
 
 function PickerHeader({
   title,
@@ -97,10 +103,10 @@ export function ResponsiveWheelField<T extends WheelPickerValue>({
       <SheetTrigger asChild>
         <button
           type="button"
-          className="mt-2 flex min-h-12 w-full items-center justify-between rounded-2xl border border-white/10 bg-[#080b12] px-4 py-3 text-left text-base text-white outline-none transition active:scale-[0.99]"
+          className={triggerClassName}
         >
           <span>{selected?.label ?? value}</span>
-          <span className="text-xs font-semibold text-cyan-300">
+          <span className="theme-accent-text text-xs font-semibold">
             Change
           </span>
         </button>
@@ -108,7 +114,7 @@ export function ResponsiveWheelField<T extends WheelPickerValue>({
       <SheetContent
         side="bottom"
         showCloseButton={false}
-        className="z-[70] gap-0 rounded-t-3xl border-white/10 bg-[#0c1929] text-white"
+        className={sheetClassName}
         style={style}
       >
         <PickerHeader
@@ -193,10 +199,10 @@ export function ResponsiveDoubleWheelField<
       <SheetTrigger asChild>
         <button
           type="button"
-          className="mt-2 flex min-h-12 w-full items-center justify-between rounded-2xl border border-white/10 bg-[#080b12] px-4 py-3 text-left text-base text-white outline-none transition active:scale-[0.99]"
+          className={triggerClassName}
         >
           <span>{displayValue}</span>
-          <span className="text-xs font-semibold text-cyan-300">
+          <span className="theme-accent-text text-xs font-semibold">
             Change
           </span>
         </button>
@@ -204,7 +210,7 @@ export function ResponsiveDoubleWheelField<
       <SheetContent
         side="bottom"
         showCloseButton={false}
-        className="z-[70] gap-0 rounded-t-3xl border-white/10 bg-[#0c1929] text-white"
+        className={sheetClassName}
         style={style}
       >
         <PickerHeader
@@ -307,16 +313,18 @@ export function ResponsiveTripleWheelField<
       <SheetTrigger asChild>
         <button
           type="button"
-          className="mt-2 flex min-h-12 w-full items-center justify-between rounded-2xl border border-white/10 bg-[#080b12] px-4 py-3 text-left text-base text-white outline-none transition active:scale-[0.99]"
+          className={triggerClassName}
         >
           <span>{displayValue}</span>
-          <span className="text-xs font-semibold text-cyan-300">Change</span>
+          <span className="theme-accent-text text-xs font-semibold">
+            Change
+          </span>
         </button>
       </SheetTrigger>
       <SheetContent
         side="bottom"
         showCloseButton={false}
-        className="z-[70] gap-0 rounded-t-3xl border-white/10 bg-[#0c1929] text-white"
+        className={sheetClassName}
         style={style}
       >
         <PickerHeader

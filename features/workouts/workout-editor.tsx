@@ -153,7 +153,7 @@ const formatRestTime = (seconds: number) => {
 const wheelClassNames = {
   optionItem: "text-slate-500",
   highlightWrapper:
-    "rounded-xl border-y border-cyan-300/20 bg-[#102238] text-lg text-white",
+    "rounded-xl border-y border-(--profile-accent-border) bg-(--profile-panel-strong) text-lg text-white",
   highlightItem: "font-semibold text-white",
 };
 
@@ -199,7 +199,7 @@ function AdaptiveWheelControl<T extends WheelPickerValue>({
       <SheetContent
         side="bottom"
         showCloseButton={false}
-        className="z-[70] gap-0 rounded-t-3xl border-white/10 bg-[#0c1929] text-white"
+        className="profile-overlay z-[70] gap-0 rounded-t-3xl border-(--profile-border) text-white"
       >
         <SheetHeader className="flex-row items-center justify-between border-b border-white/10">
           <ActionButton type="button" onClick={() => setOpen(false)}>
@@ -276,7 +276,7 @@ function AdaptiveRestControl({
       <SheetContent
         side="bottom"
         showCloseButton={false}
-        className="z-[70] gap-0 rounded-t-3xl border-white/10 bg-[#0c1929] text-white"
+        className="profile-overlay z-[70] gap-0 rounded-t-3xl border-(--profile-border) text-white"
       >
         <SheetHeader className="flex-row items-center justify-between border-b border-white/10">
           <ActionButton type="button" onClick={() => setOpen(false)}>

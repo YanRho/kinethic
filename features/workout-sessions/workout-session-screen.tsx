@@ -484,7 +484,7 @@ export function WorkoutSessionScreen({
         open={showSkipConfirmation && Boolean(currentExercise)}
         onOpenChange={setShowSkipConfirmation}
       >
-        <AlertDialogContent className="w-[calc(100%-2rem)] gap-5 border border-white/10 bg-[#10151d] p-5 shadow-2xl shadow-black/50">
+        <AlertDialogContent className="w-[calc(100%-2rem)] gap-5 border border-(--profile-border) bg-(--profile-panel) p-5 shadow-2xl shadow-black/50">
           <AlertDialogHeader className="gap-2 text-left sm:place-items-start">
             <AlertDialogTitle className="text-lg font-semibold leading-6 text-white">
               Skip {currentExercise?.exerciseName}?
