@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { CSSProperties, FormEvent, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -16,7 +16,7 @@ import { ProfileBadge, getProfileThemeStyle } from "@/app/_components/ui";
 import { ProfileThemeProvider } from "@/components/profile-theme-context";
 import { useKinEthicData, useKinEthicHydrated } from "@/lib/kinethic/hooks";
 import { repository } from "@/lib/kinethic/repository";
-import { Gender, ageFromBirthDate } from "@/lib/kinethic/domain";
+import { Sex, ageFromBirthDate } from "@/lib/kinethic/domain";
 import { ActionButton, AppInput } from "@/components/kinethic-ui";
 import {
   ResponsiveDoubleWheelField,
@@ -30,8 +30,9 @@ import {
   dayWheelOptions,
   feetWheelOptions,
   formatBirthDate,
-  genderWheelOptions,
+  sexWheelOptions,
   inchesWheelOptions,
+  initialSexWheelOptions,
   initialWeightWheelOptions,
   monthWheelOptions,
   weightWheelOptions,
@@ -51,6 +52,19 @@ const accents = [
   "from-amber-200 via-orange-300 to-rose-400",
 ];
 
+const neutralProfileThemeStyle = {
+  "--profile-accent": "#cbd5e1",
+  "--profile-accent-strong": "#94a3b8",
+  "--profile-background": "#080b12",
+  "--profile-panel": "#10151d",
+  "--profile-panel-strong": "#171d27",
+  "--profile-border": "rgba(255, 255, 255, 0.1)",
+  "--profile-muted": "#94a3b8",
+  "--profile-primary-text": "#080b12",
+  "--profile-accent-soft": "rgba(203, 213, 225, 0.1)",
+  "--profile-accent-border": "rgba(203, 213, 225, 0.28)",
+} as CSSProperties;
+
 export function ProfileHome({ landingPage = false }: { landingPage?: boolean }) {
   const data = useKinEthicData();
   const hydrated = useKinEthicHydrated();
@@ -59,11 +73,14 @@ export function ProfileHome({ landingPage = false }: { landingPage?: boolean }) 
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState("");
   const [birthDate, setBirthDate] = useState("");
-  const [gender, setGender] = useState<Gender>("prefer_not_to_say");
+  const [sex, setSex] = useState<Sex | "">("");
   const [weightLb, setWeightLb] = useState("");
   const [heightFeet, setHeightFeet] = useState("");
   const [heightInches, setHeightInches] = useState("");
-  const [accent, setAccent] = useState(accents[0]);
+  const [accent, setAccent] = useState<string | null>(null);
+  const creationThemeStyle = accent
+    ? getProfileThemeStyle(accent)
+    : neutralProfileThemeStyle;
   const showingCreator = creating;
   const submit = (event: FormEvent) => {
     event.preventDefault();
@@ -73,6 +90,8 @@ export function ProfileHome({ landingPage = false }: { landingPage?: boolean }) 
     const parsedInches = Number(heightInches);
     if (
       !name.trim() ||
+      !sex ||
+      !accent ||
       parsedAge === null ||
       parsedAge < 13 ||
       parsedAge > 120 ||
@@ -92,14 +111,14 @@ export function ProfileHome({ landingPage = false }: { landingPage?: boolean }) 
       name,
       accent,
       birthDate,
-      gender,
+      sex,
       weightLb: parsedWeight,
       heightIn: parsedFeet * 12 + parsedInches,
     });
     router.replace(`/profiles/${profile.id}/splits/new`);
   };
   return (
-    <ProfileThemeProvider style={getProfileThemeStyle(accent)}>
+    <ProfileThemeProvider style={creationThemeStyle}>
       <main className="safe-page min-h-dvh overflow-x-hidden bg-[#080b12] px-3 text-white sm:px-5">
       <div className="mx-auto flex min-h-[calc(100dvh-3rem)] min-w-0 max-w-6xl flex-col">
         <header className="flex min-h-14 items-center justify-between gap-4 pt-1">
@@ -330,41 +349,49 @@ export function ProfileHome({ landingPage = false }: { landingPage?: boolean }) 
               <h1 className="text-2xl font-semibold sm:text-3xl">
                 Who&apos;s training today?
               </h1>
-              <div className="mt-8 grid grid-cols-1 gap-3 min-[380px]:grid-cols-2 sm:grid-cols-3 sm:gap-4">
+              <div className="mx-auto mt-8 grid max-w-2xl grid-cols-2 gap-x-2 gap-y-5 sm:flex sm:max-w-4xl sm:flex-wrap sm:justify-center sm:gap-x-5 sm:gap-y-8">
                 {profiles.map((profile) => (
-                  <ActionButton
-                    tone="ghost"
+                  <button
+                    type="button"
                     key={profile.id}
                     onClick={() => router.push(`/today/${profile.id}`)}
-                    className="panel flex min-h-44 flex-col items-center justify-center p-4 transition hover:border-white/20 hover:bg-white/7"
+                    className="group flex h-auto min-h-0 min-w-0 flex-col items-center justify-start gap-3 whitespace-normal border-0 bg-transparent p-0 text-center shadow-none outline-none ring-0 sm:w-36 sm:shrink-0"
                   >
-                    <ProfileBadge profile={profile} />
-                    <span className="mt-4 font-semibold">{profile.name}</span>
-                    <span className="mt-1 text-xs text-slate-500">
-                      {profile.activeSplitId
-                        ? (data.splits[profile.activeSplitId]?.name ??
-                          "Set up split")
-                        : "Set up split"}
+                    <span className="block rounded-full ring-2 ring-transparent transition duration-200 ease-out group-hover:scale-105 group-hover:ring-white/60 group-hover:shadow-[0_0_30px_rgba(255,255,255,0.22)] group-focus-visible:scale-105 group-focus-visible:ring-white/70 group-focus-visible:shadow-[0_0_30px_rgba(255,255,255,0.22)]">
+                      <ProfileBadge profile={profile} size="lg" />
                     </span>
-                  </ActionButton>
+                    <span className="block w-full break-words text-base font-semibold leading-6 text-slate-200 sm:text-lg">
+                      {profile.name}
+                    </span>
+                  </button>
                 ))}
-                <ActionButton
-                  tone="ghost"
+                <button
+                  type="button"
                   onClick={() => {
-                    setAccent(accents[profiles.length % accents.length]);
+                    setAccent(null);
+                    setSex("");
                     setCreating(true);
                   }}
-                  className="panel flex min-h-44 flex-col items-center justify-center border-dashed p-4 text-slate-300"
+                  className="group flex h-auto min-h-0 min-w-0 flex-col items-center justify-start gap-3 whitespace-normal border-0 bg-transparent p-0 text-center text-slate-300 shadow-none outline-none ring-0 sm:w-36 sm:shrink-0"
                 >
-                  <span className="text-4xl font-light">+</span>
-                  <span className="mt-4 font-semibold">Add profile</span>
-                </ActionButton>
+                  <span className="flex h-24 w-24 shrink-0 items-center justify-center rounded-full border-2 border-dashed border-white/15 bg-white/5 text-4xl font-light transition duration-200 ease-out group-hover:scale-105 group-hover:border-white/60 group-hover:bg-white/10 group-hover:shadow-[0_0_30px_rgba(255,255,255,0.18)] group-focus-visible:scale-105 group-focus-visible:border-white/70 group-focus-visible:shadow-[0_0_30px_rgba(255,255,255,0.18)] sm:h-28 sm:w-28">
+                    +
+                  </span>
+                  <span className="block w-full break-words text-base font-semibold leading-6 sm:text-lg">
+                    Add profile
+                  </span>
+                </button>
               </div>
             </div>
           ) : (
             <form
               onSubmit={submit}
-              className="panel mx-auto w-full max-w-md p-4 sm:p-6"
+              className="profile-theme panel mx-auto w-full max-w-md p-4 sm:p-6"
+              style={{
+                ...creationThemeStyle,
+                backgroundColor: "var(--profile-panel)",
+                backgroundImage: "none",
+              }}
             >
               <h1 className="text-2xl font-semibold">Create a local profile</h1>
               <p className="mt-2 text-sm leading-6 text-slate-400">
@@ -379,6 +406,23 @@ export function ProfileHome({ landingPage = false }: { landingPage?: boolean }) 
                   placeholder="Enter a name"
                 />
               </label>
+              <div className="mt-5">
+                <p className="text-sm font-medium text-slate-300">
+                  Profile color
+                </p>
+                <div className="mt-3 flex gap-3">
+                  {accents.map((option) => (
+                    <ActionButton
+                      tone="ghost"
+                      aria-label="Choose profile color"
+                      type="button"
+                      key={option}
+                      onClick={() => setAccent(option)}
+                      className={`h-11 w-11 rounded-full bg-linear-to-br ${option} ${accent === option ? "ring-2 ring-white ring-offset-2 ring-offset-[#080b12]" : "opacity-70"}`}
+                    />
+                  ))}
+                </div>
+              </div>
               <div className="mt-4 grid gap-4 sm:grid-cols-2">
                 <label className="field">
                   <span>Birthdate</span>
@@ -399,7 +443,7 @@ export function ProfileHome({ landingPage = false }: { landingPage?: boolean }) 
                     onValueChange={(month, day, year) =>
                       setBirthDate(birthDateFromParts(month, day, year))
                     }
-                    style={getProfileThemeStyle(accent)}
+                    style={creationThemeStyle}
                   >
                     <AppInput
                       required
@@ -410,28 +454,24 @@ export function ProfileHome({ landingPage = false }: { landingPage?: boolean }) 
                   </ResponsiveTripleWheelField>
                 </label>
                 <label className="field">
-                  <span>Gender</span>
+                  <span>Sex</span>
                   <ResponsiveWheelField
-                    title="Gender"
-                    value={gender}
-                    options={genderWheelOptions}
-                    onValueChange={(value) => setGender(value as Gender)}
-                    style={getProfileThemeStyle(accent)}
+                    title="Sex"
+                    value={sex}
+                    options={sex ? sexWheelOptions : initialSexWheelOptions}
+                    onValueChange={(value) => setSex(value as Sex)}
+                    style={creationThemeStyle}
                   >
                     <Select
-                      value={gender}
-                      onValueChange={(value) => setGender(value as Gender)}
+                      value={sex}
+                      onValueChange={(value) => setSex(value as Sex)}
                     >
                       <SelectTrigger className="mt-2 min-h-12 w-full rounded-2xl border-white/10 bg-[#080b12]">
-                        <SelectValue />
+                        <SelectValue placeholder="Choose sex" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="woman">Woman</SelectItem>
-                        <SelectItem value="man">Man</SelectItem>
-                        <SelectItem value="nonbinary">Non-binary</SelectItem>
-                        <SelectItem value="prefer_not_to_say">
-                          Prefer not to say
-                        </SelectItem>
+                        <SelectItem value="female">Female</SelectItem>
+                        <SelectItem value="male">Male</SelectItem>
                       </SelectContent>
                     </Select>
                   </ResponsiveWheelField>
@@ -448,7 +488,7 @@ export function ProfileHome({ landingPage = false }: { landingPage?: boolean }) 
                       : initialWeightWheelOptions
                   }
                   onValueChange={(value) => setWeightLb(String(value))}
-                  style={getProfileThemeStyle(accent)}
+                  style={creationThemeStyle}
                 >
                   <AppInput
                     required
@@ -484,7 +524,7 @@ export function ProfileHome({ landingPage = false }: { landingPage?: boolean }) 
                     setHeightFeet(feet);
                     setHeightInches(inches);
                   }}
-                  style={getProfileThemeStyle(accent)}
+                  style={creationThemeStyle}
                 >
                   <div className="mt-2 grid grid-cols-2 gap-3">
                     <label className="field">
@@ -516,25 +556,12 @@ export function ProfileHome({ landingPage = false }: { landingPage?: boolean }) 
                   </div>
                 </ResponsiveDoubleWheelField>
               </fieldset>
-              <div className="mt-5">
-                <p className="text-sm font-medium text-slate-300">
-                  Profile color
-                </p>
-                <div className="mt-3 flex gap-3">
-                  {accents.map((option) => (
-                    <ActionButton
-                      tone="ghost"
-                      aria-label="Choose profile color"
-                      type="button"
-                      key={option}
-                      onClick={() => setAccent(option)}
-                      className={`h-11 w-11 rounded-full bg-linear-to-br ${option} ${accent === option ? "ring-2 ring-cyan-300 ring-offset-2 ring-offset-[#080b12]" : "opacity-70"}`}
-                    />
-                  ))}
-                </div>
-              </div>
               <div className="mt-7 grid gap-3">
-                <ActionButton tone="primary" type="submit">
+                <ActionButton
+                  tone="primary"
+                  type="submit"
+                  disabled={!sex || !accent}
+                >
                   Create profile
                 </ActionButton>
                 <ActionButton

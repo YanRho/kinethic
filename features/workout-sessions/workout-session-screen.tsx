@@ -257,7 +257,7 @@ export function WorkoutSessionScreen({
     const skippedAt = new Date().toISOString();
     const exercises = session.exercises.map((exercise, index) =>
       index === session.currentExerciseIndex
-        ? { ...exercise, skippedAt, skipReason: "Skipped by user" }
+        ? { ...exercise, skippedAt }
         : exercise,
     );
 

@@ -17,11 +17,18 @@ export function ProfileBadge({
   size = "md",
 }: {
   profile: Profile;
-  size?: "sm" | "md";
+  size?: "sm" | "md" | "lg";
 }) {
+  const sizeClass =
+    size === "sm"
+      ? "h-11 w-11"
+      : size === "lg"
+        ? "h-24 w-24 text-xl sm:h-28 sm:w-28 sm:text-2xl"
+        : "h-16 w-16";
+
   return (
     <div
-      className={`flex ${size === "sm" ? "h-11 w-11" : "h-16 w-16"} items-center justify-center rounded-full bg-linear-to-br ${profile.accent} p-0.5`}
+      className={`flex ${sizeClass} items-center justify-center rounded-full bg-linear-to-br ${profile.accent} p-0.5`}
     >
       <div className="flex h-full w-full items-center justify-center rounded-full bg-[#080b12] font-semibold text-white">
         {initials(profile.name)}

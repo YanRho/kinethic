@@ -1,5 +1,5 @@
 import type { WheelPickerOption } from "@/components/responsive-wheel-picker";
-import { Gender } from "./domain";
+import { Sex } from "./domain";
 
 const stringNumberOptions = (start: number, end: number, step = 1) =>
   Array.from(
@@ -72,11 +72,13 @@ export const feetWheelOptions = stringNumberOptions(1, 8);
 
 export const inchesWheelOptions = stringNumberOptions(0, 11);
 
-export const genderWheelOptions: WheelPickerOption<Gender>[] = [
-  { value: "woman", label: "Woman" },
-  { value: "man", label: "Man" },
-  { value: "nonbinary", label: "Non-binary" },
-  { value: "prefer_not_to_say", label: "Prefer not to say" },
+export const sexWheelOptions: WheelPickerOption<Sex>[] = [
+  { value: "female", label: "Female" },
+  { value: "male", label: "Male" },
+];
+export const initialSexWheelOptions: WheelPickerOption<Sex | "">[] = [
+  { value: "", label: "Choose sex" },
+  ...sexWheelOptions,
 ];
 
 export const includeCurrentWheelValue = (

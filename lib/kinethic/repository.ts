@@ -2,7 +2,7 @@ import {
   DayKey,
   Equipment,
   ExerciseDefinition,
-  Gender,
+  Sex,
   Id,
   KinEthicData,
   MuscleGroup,
@@ -34,7 +34,7 @@ export interface KinEthicRepository {
     name: string;
     accent: string;
     birthDate: string;
-    gender: Gender;
+    sex: Sex;
     weightLb: number;
     heightIn: number;
   }): Profile;
@@ -43,7 +43,7 @@ export interface KinEthicRepository {
     input: {
       name: string;
       birthDate: string;
-      gender: Gender;
+      sex: Sex;
       weightLb: number;
       heightIn: number;
     },
@@ -79,6 +79,7 @@ export interface KinEthicRepository {
   resumeWorkoutSession(sessionId: Id): WorkoutSession | null;
   saveWorkoutSession(session: WorkoutSession): void;
   discardWorkoutSession(sessionId: Id): boolean;
+  deleteWorkoutHistoryEntry(sessionId: Id): boolean;
   finishWorkoutSession(sessionId: Id): WorkoutSession | null;
 }
 
@@ -170,7 +171,7 @@ function migrateLegacy(raw: string | null): KinEthicData {
 function sanitize(value: unknown): KinEthicData {
   if (
     !isRecord(value) ||
-    ![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16].includes(
+    ![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17].includes(
       Number(value.schemaVersion),
     )
   ) {
@@ -196,7 +197,7 @@ function sanitize(value: unknown): KinEthicData {
     }
   }
   for (const profile of Object.values(data.profiles)) {
-    const legacy = profile as Profile & { age?: number };
+    const legacy = profile as Profile & { age?: number; gender?: string };
     if (
       !profile.birthDate &&
       Number.isInteger(legacy.age) &&
@@ -205,6 +206,15 @@ function sanitize(value: unknown): KinEthicData {
       profile.birthDate = `${new Date().getFullYear() - legacy.age!}-01-01`;
     }
     delete legacy.age;
+    if (!profile.sex) {
+      profile.sex =
+        legacy.gender === "woman" || legacy.gender === "female"
+          ? "female"
+          : legacy.gender === "man" || legacy.gender === "male"
+            ? "male"
+            : undefined;
+    }
+    delete legacy.gender;
   }
   for (const session of Object.values(data.workoutSessions)) {
     for (const exercise of session.exercises) {
@@ -362,7 +372,7 @@ class LocalStorageRepository implements KinEthicRepository {
     name: string;
     accent: string;
     birthDate: string;
-    gender: Gender;
+    sex: Sex;
     weightLb: number;
     heightIn: number;
   }) {
@@ -374,7 +384,7 @@ class LocalStorageRepository implements KinEthicRepository {
       name: input.name.trim(),
       accent: input.accent,
       birthDate: input.birthDate,
-      gender: input.gender,
+      sex: input.sex,
       weightLb: input.weightLb,
       heightIn: input.heightIn,
       activeSplitId: null,
@@ -390,7 +400,7 @@ class LocalStorageRepository implements KinEthicRepository {
     input: {
       name: string;
       birthDate: string;
-      gender: Gender;
+      sex: Sex;
       weightLb: number;
       heightIn: number;
     },
@@ -403,7 +413,7 @@ class LocalStorageRepository implements KinEthicRepository {
       ...profile,
       name: input.name.trim(),
       birthDate: input.birthDate,
-      gender: input.gender,
+      sex: input.sex,
       weightLb: input.weightLb,
       heightIn: input.heightIn,
       updatedAt: now(),
@@ -754,6 +764,18 @@ class LocalStorageRepository implements KinEthicRepository {
       }
     }
 
+    this.write(data);
+    return true;
+  }
+  deleteWorkoutHistoryEntry(sessionId: Id) {
+    const data = this.read();
+    const session = data.workoutSessions[sessionId];
+
+    if (!session?.completedAt) {
+      return false;
+    }
+
+    delete data.workoutSessions[sessionId];
     this.write(data);
     return true;
   }

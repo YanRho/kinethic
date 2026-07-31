@@ -10,6 +10,7 @@ import {
   LogOut,
   Settings,
   TimerReset,
+  Trophy,
   Trash2,
 } from "lucide-react";
 import {
@@ -20,7 +21,8 @@ import {
 } from "@/app/_components/ui";
 import { ProfileThemeProvider } from "@/components/profile-theme-context";
 import {
-  Gender,
+  Sex,
+  WorkoutSession,
   ageFromBirthDate,
   dayLabel,
   localDay,
@@ -70,7 +72,7 @@ import {
   dayWheelOptions,
   feetWheelOptions,
   formatBirthDate,
-  genderWheelOptions,
+  sexWheelOptions,
   inchesWheelOptions,
   includeCurrentWheelValue,
   monthWheelOptions,
@@ -96,6 +98,82 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+
+const localDateKey = (date: Date) =>
+  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+
+function CompletedWorkoutSummary({
+  session,
+  splitName,
+  profileId,
+}: {
+  session: WorkoutSession;
+  splitName?: string;
+  profileId: string;
+}) {
+  const completedSets = session.exercises.reduce(
+    (total, exercise) =>
+      total + exercise.sets.filter((set) => set.completedAt).length,
+    0,
+  );
+  const skippedExercises = session.exercises.filter(
+    (exercise) => exercise.skippedAt,
+  ).length;
+  const elapsedSeconds = session.completedAt
+    ? Math.max(
+        0,
+        Math.floor(
+          (new Date(session.completedAt).getTime() -
+            new Date(session.startedAt).getTime()) /
+            1000,
+        ) - (session.accumulatedPausedSeconds ?? 0),
+      )
+    : 0;
+
+  return (
+    <>
+      <div className="rounded-2xl border border-(--profile-accent-border) bg-(--profile-accent-soft) p-5 text-center">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-(--profile-accent) text-(--profile-primary-text)">
+          <Trophy aria-hidden="true" className="h-7 w-7" />
+        </div>
+        <p className="eyebrow mt-4">Today · {splitName}</p>
+        <h2 className="mt-2 text-2xl font-semibold">Workout complete!</h2>
+        <p className="mt-2 text-sm leading-6 text-slate-400">
+          Great work finishing {session.workoutName}.
+        </p>
+      </div>
+
+      <div className="mt-4 grid grid-cols-3 gap-2">
+        {[
+          ["Time", formatTimer(elapsedSeconds)],
+          ["Exercises", String(session.exercises.length)],
+          ["Sets", String(completedSets)],
+        ].map(([label, value]) => (
+          <div
+            key={label}
+            className="rounded-xl bg-(--profile-panel-strong) px-2 py-3 text-center"
+          >
+            <p className="text-[10px] uppercase tracking-wider text-slate-500">
+              {label}
+            </p>
+            <p className="mt-1 truncate text-sm font-semibold">{value}</p>
+          </div>
+        ))}
+      </div>
+
+      {skippedExercises > 0 && (
+        <p className="mt-3 text-center text-xs text-slate-500">
+          {skippedExercises} skipped {skippedExercises === 1 ? "exercise" : "exercises"}
+        </p>
+      )}
+      <ActionButton asChild className="mt-5 w-full">
+        <Link href={`/profiles/${profileId}/history`}>
+          View workout summary
+        </Link>
+      </ActionButton>
+    </>
+  );
+}
 
 const bmiGradient = (bmi: number) => {
   if (bmi < 18.5) return "from-sky-500 via-cyan-500 to-blue-600";
@@ -146,8 +224,7 @@ export function TodayScreen({ profileId }: { profileId: string }) {
   const [profileDialogOpen, setProfileDialogOpen] = useState(false);
   const [editName, setEditName] = useState("");
   const [editBirthDate, setEditBirthDate] = useState("");
-  const [editGender, setEditGender] =
-    useState<Gender>("prefer_not_to_say");
+  const [editSex, setEditSex] = useState<Sex>("female");
   const [editWeightLb, setEditWeightLb] = useState("");
   const [editHeightFeet, setEditHeightFeet] = useState("");
   const [editHeightInches, setEditHeightInches] = useState("");
@@ -190,6 +267,18 @@ export function TodayScreen({ profileId }: { profileId: string }) {
         )
         .sort((a, b) => b.startedAt.localeCompare(a.startedAt))[0]
     : undefined;
+  const currentLocalDate = localDateKey(new Date());
+  const completedWorkoutSession = workout
+    ? Object.values(data.workoutSessions)
+        .filter(
+          (session) =>
+            session.profileId === profileId &&
+            session.workoutId === workout.id &&
+            session.completedAt &&
+            localDateKey(new Date(session.completedAt)) === currentLocalDate,
+        )
+        .sort((a, b) => b.completedAt!.localeCompare(a.completedAt!))[0]
+    : undefined;
   const workoutInProgress = Boolean(activeWorkoutSession);
   const currentWorkoutExerciseIndex = workout
     ? Math.min(
@@ -209,7 +298,7 @@ export function TodayScreen({ profileId }: { profileId: string }) {
   const openProfileEditor = () => {
     setEditName(profile.name);
     setEditBirthDate(profile.birthDate ?? "");
-    setEditGender(profile.gender ?? "prefer_not_to_say");
+    setEditSex(profile.sex ?? "female");
     setEditWeightLb(profile.weightLb?.toString() ?? "");
     setEditHeightFeet(
       profile.heightIn ? Math.floor(profile.heightIn / 12).toString() : "",
@@ -245,7 +334,7 @@ export function TodayScreen({ profileId }: { profileId: string }) {
     repository.updateProfile(profile.id, {
       name: editName,
       birthDate: editBirthDate,
-      gender: editGender,
+      sex: editSex,
       weightLb,
       heightIn,
     });
@@ -415,7 +504,14 @@ export function TodayScreen({ profileId }: { profileId: string }) {
           </p>
           <Surface className="mt-4 overflow-hidden p-3 shadow-2xl shadow-black/30 sm:p-5">
             {experience.kind === "workout" && workout ? (
-              <>
+              completedWorkoutSession ? (
+                <CompletedWorkoutSummary
+                  session={completedWorkoutSession}
+                  splitName={split?.name}
+                  profileId={profileId}
+                />
+              ) : (
+                <>
                 <div className="flex items-start justify-between gap-4 px-1 pb-4">
                   <div className="min-w-0">
                     <p className="eyebrow">Today · {split?.name}</p>
@@ -594,7 +690,8 @@ export function TodayScreen({ profileId }: { profileId: string }) {
                     </ActionButton>
                   )}
                 </div>
-              </>
+                </>
+              )
             ) : experience.kind === "rest" ? (
               <>
                 <p className="eyebrow text-slate-400">
@@ -691,7 +788,8 @@ export function TodayScreen({ profileId }: { profileId: string }) {
           <DialogHeader>
             <DialogTitle>Edit profile</DialogTitle>
             <DialogDescription>
-              Update your personal details and BMI inputs.
+              Personal details. This information is stored only on your device,
+              not on a server.
             </DialogDescription>
           </DialogHeader>
           <label className="field">
@@ -731,28 +829,24 @@ export function TodayScreen({ profileId }: { profileId: string }) {
               </ResponsiveTripleWheelField>
             </label>
             <label className="field">
-              <span>Gender</span>
+              <span>Sex</span>
               <ResponsiveWheelField
-                title="Gender"
-                value={editGender}
-                options={genderWheelOptions}
-                onValueChange={(value) => setEditGender(value as Gender)}
+                title="Sex"
+                value={editSex}
+                options={sexWheelOptions}
+                onValueChange={(value) => setEditSex(value as Sex)}
                 style={getProfileThemeStyle(profile.accent)}
               >
                 <Select
-                  value={editGender}
-                  onValueChange={(value) => setEditGender(value as Gender)}
+                  value={editSex}
+                  onValueChange={(value) => setEditSex(value as Sex)}
                 >
                   <SelectTrigger className="mt-2 min-h-12 w-full rounded-2xl border-(--profile-border) bg-(--profile-background)">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="woman">Woman</SelectItem>
-                    <SelectItem value="man">Man</SelectItem>
-                    <SelectItem value="nonbinary">Non-binary</SelectItem>
-                    <SelectItem value="prefer_not_to_say">
-                      Prefer not to say
-                    </SelectItem>
+                    <SelectItem value="female">Female</SelectItem>
+                    <SelectItem value="male">Male</SelectItem>
                   </SelectContent>
                 </Select>
               </ResponsiveWheelField>

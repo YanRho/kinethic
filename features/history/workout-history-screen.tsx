@@ -1,10 +1,20 @@
 "use client";
 
-import { CalendarDays, Check, Clock3, Dumbbell, SkipForward } from "lucide-react";
+import { useState } from "react";
+import {
+  CalendarDays,
+  Check,
+  Clock3,
+  Dumbbell,
+  SkipForward,
+  Trash2,
+} from "lucide-react";
 import { EmptyState, PageShell } from "@/app/_components/ui";
-import { StatusBadge, Surface } from "@/components/kinethic-ui";
+import { ActionButton, StatusBadge, Surface } from "@/components/kinethic-ui";
+import { ConfirmAction } from "@/components/confirm-action";
 import { SessionExercise, WorkoutSession } from "@/lib/kinethic/domain";
 import { useKinEthicData } from "@/lib/kinethic/hooks";
+import { repository } from "@/lib/kinethic/repository";
 
 const formatDate = (value: string) =>
   new Intl.DateTimeFormat(undefined, {
@@ -57,6 +67,9 @@ const formatSet = (exercise: SessionExercise, setIndex: number) => {
 
 export function WorkoutHistoryScreen({ profileId }: { profileId: string }) {
   const data = useKinEthicData();
+  const [expandedSessionIds, setExpandedSessionIds] = useState<Set<string>>(
+    () => new Set(),
+  );
   const profile = data.profiles[profileId];
   const sessions = Object.values(data.workoutSessions)
     .filter(
@@ -110,9 +123,41 @@ export function WorkoutHistoryScreen({ profileId }: { profileId: string }) {
                 0,
               );
               return (
-                <Surface key={session.id} className="overflow-hidden">
-                  <details className="group">
-                    <summary className="cursor-pointer list-none p-4 sm:p-5 [&::-webkit-details-marker]:hidden">
+                <Surface key={session.id} className="relative overflow-hidden">
+                  <ConfirmAction
+                    trigger={
+                      <ActionButton
+                        tone="ghost"
+                        size="icon-lg"
+                        className="absolute right-3 top-3 z-10 rounded-xl text-red-200 hover:bg-red-300/10 sm:right-4 sm:top-4"
+                        aria-label={`Delete ${session.workoutName} history`}
+                        title={`Delete ${session.workoutName} history`}
+                      >
+                        <Trash2 aria-hidden="true" className="h-4 w-4" />
+                      </ActionButton>
+                    }
+                    title={`Delete ${session.workoutName} from history?`}
+                    description="This permanently deletes this completed workout and all of its recorded exercise and set data."
+                    actionLabel="Delete history"
+                    destructive
+                    onConfirm={() =>
+                      repository.deleteWorkoutHistoryEntry(session.id)
+                    }
+                  />
+                  <div>
+                    <button
+                      type="button"
+                      aria-expanded={expandedSessionIds.has(session.id)}
+                      className="w-full cursor-pointer p-4 pr-16 text-left sm:p-5 sm:pr-20"
+                      onClick={() =>
+                        setExpandedSessionIds((current) => {
+                          const next = new Set(current);
+                          if (next.has(session.id)) next.delete(session.id);
+                          else next.add(session.id);
+                          return next;
+                        })
+                      }
+                    >
                       <div className="flex items-start justify-between gap-4">
                         <div className="min-w-0">
                           <h2 className="truncate text-lg font-semibold">
@@ -129,20 +174,23 @@ export function WorkoutHistoryScreen({ profileId }: { profileId: string }) {
                             </span>
                           </div>
                         </div>
-                        <span className="theme-accent-text shrink-0 text-sm font-semibold group-open:hidden">
-                          View
-                        </span>
-                        <span className="theme-accent-text hidden shrink-0 text-sm font-semibold group-open:inline">
-                          Hide
+                        <span className="theme-accent-text shrink-0 text-sm font-semibold">
+                          {expandedSessionIds.has(session.id) ? "Hide" : "View"}
                         </span>
                       </div>
                       <div className="mt-3 flex flex-wrap gap-2">
                         <StatusBadge>{session.exercises.length} exercises</StatusBadge>
                         <StatusBadge>{completedSets} completed sets</StatusBadge>
                       </div>
-                    </summary>
+                    </button>
 
-                    <div className="border-t border-(--profile-border) px-4 pb-5 pt-2 sm:px-5">
+                    <div
+                      className={`grid transition-[grid-template-rows] duration-500 ease-out motion-reduce:transition-none ${expandedSessionIds.has(session.id) ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}
+                    >
+                      <div className="min-h-0 overflow-hidden">
+                        <div
+                          className={`border-t border-(--profile-border) px-4 pb-5 pt-2 transition duration-300 ease-out motion-reduce:transition-none sm:px-5 ${expandedSessionIds.has(session.id) ? "translate-y-0 opacity-100 delay-100" : "-translate-y-2 opacity-0"}`}
+                        >
                       <div className="space-y-3">
                         {session.exercises.map((exercise, exerciseIndex) => (
                           <div
@@ -194,19 +242,16 @@ export function WorkoutHistoryScreen({ profileId }: { profileId: string }) {
                                 {exercise.notes}
                               </p>
                             )}
-                            {exercise.skipReason && (
-                              <p className="mt-3 text-sm text-amber-200">
-                                Skip reason: {exercise.skipReason}
-                              </p>
-                            )}
                           </div>
                         ))}
                       </div>
                       <p className="mt-4 text-xs text-slate-500">
                         Started {formatDate(session.startedAt)} · Completed {formatDate(session.completedAt!)}
                       </p>
+                        </div>
+                      </div>
                     </div>
-                  </details>
+                  </div>
                 </Surface>
               );
             })}
