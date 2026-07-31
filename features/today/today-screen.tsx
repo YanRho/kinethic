@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   Dumbbell,
+  History,
   LockKeyhole,
   LogOut,
   Settings,
@@ -308,6 +309,12 @@ export function TodayScreen({ profileId }: { profileId: string }) {
             >
               <DropdownMenuLabel>{profile.name}</DropdownMenuLabel>
               <DropdownMenuSeparator className="bg-(--profile-border)" />
+              <DropdownMenuItem asChild className="min-h-11 px-3 py-2">
+                <Link href={`/profiles/${profileId}/history`}>
+                  <History aria-hidden="true" />
+                  Workout history
+                </Link>
+              </DropdownMenuItem>
               <DropdownMenuItem asChild className="min-h-11 px-3 py-2">
                 <Link href="/profiles" replace>
                   <LogOut aria-hidden="true" />
