@@ -337,12 +337,13 @@ export function ExercisePicker({
             </SheetTitle>
             <SheetClose asChild>
               <ActionButton
+                tone="ghost"
                 type="button"
                 size="icon-lg"
                 aria-label="Close add exercises"
-                className="rounded-full border border-(--profile-border)"
+                className="!size-10 !min-h-10 !border-0 !bg-transparent !p-0 text-red-400 hover:!bg-red-500/15 hover:text-red-200"
               >
-                <XIcon aria-hidden="true" />
+                <XIcon aria-hidden="true" className="size-5" />
               </ActionButton>
             </SheetClose>
           </div>
