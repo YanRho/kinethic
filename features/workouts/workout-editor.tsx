@@ -518,11 +518,8 @@ export function WorkoutEditor({
     const newItems = exerciseIds.map((exerciseId) =>
       newWorkoutExercise(exerciseId),
     );
-    const lastNewItem = newItems.at(-1);
 
     setItems((current) => [...current, ...newItems]);
-    setOpenExerciseId(lastNewItem?.id ?? null);
-    setPicker(false);
   };
   const removeExercise = (exerciseId: Id) => {
     setItems((current) => current.filter((item) => item.id !== exerciseId));

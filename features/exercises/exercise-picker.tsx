@@ -207,6 +207,7 @@ export function ExercisePicker({
     .map((exerciseId) => data.exercises[exerciseId])
     .filter((exercise): exercise is ExerciseDefinition => Boolean(exercise));
   const selectedExercises = selectedIds
+    .filter((exerciseId) => !existingExerciseIds.includes(exerciseId))
     .map((exerciseId) => data.exercises[exerciseId])
     .filter((exercise): exercise is ExerciseDefinition => Boolean(exercise));
   const prospectiveExercises = [...existingExercises, ...selectedExercises];
@@ -239,10 +240,6 @@ export function ExercisePicker({
 
   const toggleSelection = (exerciseId: Id) => {
     if (selectedIds.includes(exerciseId)) {
-      setSelectedIds((current) =>
-        current.filter((id) => id !== exerciseId),
-      );
-      setLimitMessage(null);
       return;
     }
 
@@ -258,29 +255,9 @@ export function ExercisePicker({
     }
 
     setSelectedIds((current) => [...current, exerciseId]);
+    repository.recordRecentExercises(profileId, [exerciseId]);
+    onAdd([exerciseId]);
     setLimitMessage(null);
-  };
-  const addSelectedExercises = () => {
-    if (selectedIds.length === 0) {
-      return;
-    }
-
-    const acceptedIds: Id[] = [];
-    const acceptedExercises = [...existingExercises];
-    for (const exerciseId of selectedIds) {
-      const exercise = data.exercises[exerciseId];
-      if (!exercise) continue;
-      const validation = validateExerciseAddition(acceptedExercises, exercise);
-      if (!validation.allowed) {
-        setLimitMessage(validation.message);
-        return;
-      }
-      acceptedIds.push(exerciseId);
-      acceptedExercises.push(exercise);
-    }
-
-    repository.recordRecentExercises(profileId, acceptedIds);
-    onAdd(acceptedIds);
   };
   const deleteCustomExercise = (exercise: ExerciseDefinition) => {
     setSelectedIds((current) =>
@@ -317,6 +294,8 @@ export function ExercisePicker({
       setSelectedIds((current) =>
         current.includes(exercise.id) ? current : [...current, exercise.id],
       );
+      repository.recordRecentExercises(profileId, [exercise.id]);
+      onAdd([exercise.id]);
       setLimitMessage(null);
     } else {
       setLimitMessage(validation.message);
@@ -516,11 +495,9 @@ export function ExercisePicker({
           <ActionButton
             tone="primary"
             type="button"
-            disabled={selectedIds.length === 0}
-            onClick={addSelectedExercises}
+            onClick={onClose}
           >
-            Add {selectedIds.length || ""}{" "}
-            {selectedIds.length === 1 ? "Exercise" : "Exercises"}
+            Done
           </ActionButton>
         </SheetFooter>
 
